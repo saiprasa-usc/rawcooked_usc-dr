@@ -1,0 +1,8 @@
+2023-06-28 15:42:52,006	INFO	==================== END Python3 DPX splitting script END ====================
+2023-06-28 15:42:52,006	INFO	================== START Python3 DPX splitting script START ==================
+2023-06-28 15:42:52,007	INFO	No splitting necessary for: /home/saiprasa/Desktop/rawcooked-usc-dr/media/encoding/dpx_to_assess/N_036test_01of01
+Moving to encoding path for rawcooked
+2023-06-28 15:42:52,007	INFO	Moving DPX sequence to RAWcooked path: N_036test_01of01
+2023-06-28 15:42:52,875	INFO	Move N_036test_01of01 to RAWcooked encoding path: /home/saiprasa/Desktop/rawcooked-usc-dr/automation_dpx/encoding/rawcooked/dpx_to_cook/
+2023-06-28 15:42:52,875	INFO	Script exiting
+2023-06-28 15:42:52,875	INFO	==================== END Python3 DPX splitting script END ====================

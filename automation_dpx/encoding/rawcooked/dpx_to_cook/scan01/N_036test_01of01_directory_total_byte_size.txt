@@ -1,0 +1,1 @@
+N_036test_01of01total folder size in bytes (du -s -b from BK-CI-DATA3): 4096
