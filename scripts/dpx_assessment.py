@@ -12,20 +12,19 @@ from dotenv import load_dotenv
 import os
 import re
 import concurrent.futures
-import subprocess
 
 # Load environment variables from .env file
 load_dotenv()
 
 
-DPX_LOG = os.environ.get('FILM_OPS') + os.environ.get('DPX_SCRIPT_LOG')
+SCRIPT_LOG = os.environ.get('FILM_OPS') + os.environ.get('DPX_SCRIPT_LOG')
 DPX_PATH = os.environ.get('FILM_OPS') + os.environ.get('DPX_ASSESS')
 PY3_LAUNCH = os.environ.get('PY3_ENV')
 SPLITTING = os.environ.get('SPLITTING_SCRIPT_FILMOPS')
 POLICY_PATH = os.environ.get('FILM_OPS') + os.environ.get('POLICY_DPX')
 
 
-logfile = DPX_LOG + "dpx_assessment.log"
+logfile = SCRIPT_LOG + "dpx_assessment.log"
 rawcooked_dpx_file = DPX_PATH + 'rawcooked_dpx_list.txt'
 luma_4k_dpx_file = DPX_PATH + 'luma_4k_dpx_list.txt'
 tar_dpx_file = DPX_PATH + 'tar_dpx_list.txt'
@@ -145,7 +144,7 @@ if os.path.getsize(python_file) > 0:
     log(logfile, "Launching python script to process DPX sequences. Please see dpx_splitting_script.log for more details")
     with open(python_file, 'r') as file:
         file_list = set(file.read().splitlines())
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:        #Change to parallel processes rather than threads
         futures = [executor.submit(run_script, PY3_LAUNCH, SPLITTING, argument) for argument in file_list]
         concurrent.futures.wait(futures)
 

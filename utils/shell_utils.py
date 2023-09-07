@@ -35,3 +35,7 @@ def check_mediaconch_policy(policy_path, filename):
 
 def run_script(python_version, script_name, argument):
     subprocess.run([python_version, script_name, argument], check=True)
+
+def run_command(command, argument):
+    command = command.replace("argument", argument)
+    subprocess.run(command, shell=True, check=True)

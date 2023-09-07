@@ -51,6 +51,9 @@ import logging
 import csv
 import json
 import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Global variables
 DPX_PATH = os.environ['FILM_OPS']
