@@ -448,3 +448,48 @@ RAWcooked 2K RGB path items for size check and Python splitting/moving script: -
 Size of /home/saiprasa/Desktop/rawcooked-usc-dr/media/encoding/dpx_to_assess/N_036test_01of01 is 130056 KB. Passing to Python script... - 2023-07-10 - 13:42:21
 Launching python script to process DPX sequences. Please see dpx_splitting_script.log for more details - 2023-07-10 - 13:42:21
 ===================== DPX assessment workflows ENDED ===================== - 2023-07-10 - 13:42:21
+============= DPX Assessment workflow START ============= - 2023-10-03 - 11:11:51
+Metadata file creation has started for: - 2023-10-03 - 11:11:51
+N_036test_01of01/scan01/3200x2080/FNH_023_0000002.dpx - 2023-10-03 - 11:11:51
+PASS: RGB $file_scan_name has passed the MediaConch policy and can progress to RAWcooked processing path - 2023-10-03 - 11:11:53
+RAWcooked 2K RGB path items for size check and Python splitting/moving script: - 2023-10-03 - 11:11:53
+/home/saiprasa/Desktop/rawcooked-usc-dr/media/encoding/dpx_to_assess/N_036test_01of01 - 2023-10-03 - 11:11:53
+Size of /home/saiprasa/Desktop/rawcooked-usc-dr/media/encoding/dpx_to_assess/N_036test_01of01 is 130056 KB. Passing to Python script... - 2023-10-03 - 11:11:53
+Launching python script to process DPX sequences. Please see dpx_splitting_script.log for more details - 2023-10-03 - 11:11:53
+===================== DPX assessment workflows ENDED ===================== - 2023-10-03 - 11:11:53
+============= DPX Assessment workflow START ============= - 2023-10-03 - 13:33:31
+Metadata file creation has started for: - 2023-10-03 - 13:33:31
+N_036test_01of01/scan01/3200x2080/FNH_023_0000002.dpx - 2023-10-03 - 13:33:31
+PASS: RGB $file_scan_name has passed the MediaConch policy and can progress to RAWcooked processing path - 2023-10-03 - 13:33:32
+RAWcooked 2K RGB path items for size check and Python splitting/moving script: - 2023-10-03 - 13:33:32
+/home/saiprasa/Desktop/rawcooked-usc-dr/media/encoding/dpx_to_assess/N_036test_01of01 - 2023-10-03 - 13:33:32
+Size of /home/saiprasa/Desktop/rawcooked-usc-dr/media/encoding/dpx_to_assess/N_036test_01of01 is 130056 KB. Passing to Python script... - 2023-10-03 - 13:33:32
+Launching python script to process DPX sequences. Please see dpx_splitting_script.log for more details - 2023-10-03 - 13:33:32
+===================== DPX assessment workflows ENDED ===================== - 2023-10-03 - 13:33:32
+============= DPX Assessment workflow START ============= - 2023-10-03 - 13:49:16
+Metadata file creation has started for: - 2023-10-03 - 13:49:16
+N_036test_01of01/scan01/3200x2080/FNH_023_0000002.dpx - 2023-10-03 - 13:49:16
+PASS: RGB $file_scan_name has passed the MediaConch policy and can progress to RAWcooked processing path - 2023-10-03 - 13:49:17
+RAWcooked 2K RGB path items for size check and Python splitting/moving script: - 2023-10-03 - 13:49:17
+/home/saiprasa/Desktop/rawcooked-usc-dr/media/encoding/dpx_to_assess/N_036test_01of01 - 2023-10-03 - 13:49:17
+Size of /home/saiprasa/Desktop/rawcooked-usc-dr/media/encoding/dpx_to_assess/N_036test_01of01 is 130056 KB. Passing to Python script... - 2023-10-03 - 13:49:17
+Launching python script to process DPX sequences. Please see dpx_splitting_script.log for more details - 2023-10-03 - 13:49:17
+===================== DPX assessment workflows ENDED ===================== - 2023-10-03 - 13:49:17
+============= DPX Assessment workflow START ============= - 2023-10-05 - 10:16:34
+Metadata file creation has started for: - 2023-10-05 - 10:16:34
+N_036test_01of01/scan01/3200x2080/FNH_023_0000002.dpx - 2023-10-05 - 10:16:34
+PASS: RGB $file_scan_name has passed the MediaConch policy and can progress to RAWcooked processing path - 2023-10-05 - 10:16:36
+RAWcooked 2K RGB path items for size check and Python splitting/moving script: - 2023-10-05 - 10:16:36
+/home/saiprasa/Desktop/rawcooked-usc-dr/media/encoding/dpx_to_assess/N_036test_01of01 - 2023-10-05 - 10:16:36
+Size of /home/saiprasa/Desktop/rawcooked-usc-dr/media/encoding/dpx_to_assess/N_036test_01of01 is 130056 KB. Passing to Python script... - 2023-10-05 - 10:16:36
+Launching python script to process DPX sequences. Please see dpx_splitting_script.log for more details - 2023-10-05 - 10:16:36
+===================== DPX assessment workflows ENDED ===================== - 2023-10-05 - 10:16:36
+============= DPX Assessment workflow START ============= - 2023-10-05 - 11:29:07
+Metadata file creation has started for: - 2023-10-05 - 11:29:07
+N_036test_01of01/scan01/3200x2080/FNH_023_0000002.dpx - 2023-10-05 - 11:29:07
+PASS: RGB $file_scan_name has passed the MediaConch policy and can progress to RAWcooked processing path - 2023-10-05 - 11:29:08
+RAWcooked 2K RGB path items for size check and Python splitting/moving script: - 2023-10-05 - 11:29:08
+/home/saiprasa/Desktop/rawcooked-usc-dr/media/encoding/dpx_to_assess/N_036test_01of01 - 2023-10-05 - 11:29:08
+Size of /home/saiprasa/Desktop/rawcooked-usc-dr/media/encoding/dpx_to_assess/N_036test_01of01 is 130056 KB. Passing to Python script... - 2023-10-05 - 11:29:08
+Launching python script to process DPX sequences. Please see dpx_splitting_script.log for more details - 2023-10-05 - 11:29:08
+===================== DPX assessment workflows ENDED ===================== - 2023-10-05 - 11:29:08

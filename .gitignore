@@ -1,2 +1,4 @@
 env/
 automation_dpx/
+logs/
+.env
