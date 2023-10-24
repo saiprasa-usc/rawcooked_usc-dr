@@ -22,19 +22,3 @@ Moving to encoding path for rawcooked
 2023-07-10 13:42:21,871	INFO	Move N_036test_01of01 to RAWcooked encoding path: /home/saiprasa/Desktop/rawcooked-usc-dr/automation_dpx/encoding/rawcooked/dpx_to_cook/
 2023-07-10 13:42:21,871	INFO	Script exiting
 2023-07-10 13:42:21,871	INFO	==================== END Python3 DPX splitting script END ====================
-2023-09-21 11:31:30,430	INFO	==================== END Python3 DPX splitting script END ====================
-2023-09-21 11:31:30,458	INFO	================== START Python3 DPX splitting script START ==================
-2023-09-21 11:31:30,459	INFO	No splitting necessary for: /home/tnandi/Desktop/rawcooked_usc-dr/media/encoding/dpx_to_assess/N_036test_01of01
-Moving to encoding path for rawcooked
-2023-09-21 11:31:30,459	INFO	Moving DPX sequence to RAWcooked path: N_036test_01of01
-2023-09-21 11:31:30,459	INFO	Move N_036test_01of01 to RAWcooked encoding path: /home/tnandi/Desktop/rawcooked_usc-dr/automation_dpx/encoding/rawcooked/dpx_to_cook/
-2023-09-21 11:31:30,459	INFO	Script exiting
-2023-09-21 11:31:30,459	INFO	==================== END Python3 DPX splitting script END ====================
-2023-09-21 11:39:46,750	INFO	==================== END Python3 DPX splitting script END ====================
-2023-09-21 11:39:46,758	INFO	================== START Python3 DPX splitting script START ==================
-2023-09-21 11:39:46,759	INFO	No splitting necessary for: /home/tnandi/Desktop/rawcooked_usc-dr/media/encoding/dpx_to_assess/N_036test_01of01
-Moving to encoding path for rawcooked
-2023-09-21 11:39:46,759	INFO	Moving DPX sequence to RAWcooked path: N_036test_01of01
-2023-09-21 11:39:46,759	INFO	Move N_036test_01of01 to RAWcooked encoding path: /home/tnandi/Desktop/rawcooked_usc-dr/automation_dpx/encoding/rawcooked/dpx_to_cook/
-2023-09-21 11:39:46,759	INFO	Script exiting
-2023-09-21 11:39:46,759	INFO	==================== END Python3 DPX splitting script END ====================

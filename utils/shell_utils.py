@@ -60,6 +60,13 @@ def run_script(python_version, script_name, argument):
     subprocess.run([python_version, script_name, argument], check=True)
 
 
+<<<<<<< HEAD
 def run_command(command, argument):
     command = command.replace("argument", argument)
+=======
+def run_command(command, argument=None):
+    if argument:
+        command = command.replace("argument", argument)
+    print("Running: " + command)
+>>>>>>> 46478dcb5553a2f1de30f312ab1937d6252a45b8
     subprocess.run(command, shell=True, check=True)

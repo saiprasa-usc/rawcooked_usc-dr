@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from utils.logging_utils import log
 from utils.find_utils import find_directories
 from utils.find_utils import find_in_logs
@@ -31,7 +33,11 @@ success_file = DPX_PATH + "rawcook_dpx_success.log"
 failure_file = DPX_PATH + "tar_dpx_failures.log"
 
 # Check for DPX sequences in path before script launch
+<<<<<<< HEAD
 if not os.listdir(DPX_PATH):  # Make try catch
+=======
+if not os.listdir(DPX_PATH):                            #TODO Make try catch
+>>>>>>> 46478dcb5553a2f1de30f312ab1937d6252a45b8
     print("No files available for encoding, script exiting")
     exit(1)
 else:
@@ -49,7 +55,11 @@ for file_name in file_names:
 
 # Loop that retrieves single DPX file in each folder, runs Mediaconch check and generates metadata files
 # Configured for three level folders: N_123456_01of01/scan01/dimensions/<dpx_seq>
+<<<<<<< HEAD
 depth = 3  # Take as user input
+=======
+depth = 3                          #TODO Take as user input
+>>>>>>> 46478dcb5553a2f1de30f312ab1937d6252a45b8
 dirs = find_directories(DPX_PATH, depth)
 
 # Checking mediaconch policy for first DPX file in each folder
@@ -70,12 +80,20 @@ for dir_name in dirs:
         tree_output_file = DPX_PATH + file_scan_name + '/' + filename + '_directory_contents.txt'
         size_output_file = DPX_PATH + file_scan_name + '/' + filename + '_directory_total_byte_size.txt'
         get_media_info('-f', dir_name + '/' + dpx, mediainfo_output_file)
+<<<<<<< HEAD
         generate_tree(dir_name, '', tree_output_file)  # Check if we need this tree
         byte_size = os.path.getsize(DPX_PATH + filename)
         with open(size_output_file, 'w') as file:
             file.write(filename + 'total folder size in bytes (du -s -b from BK-CI-DATA3): ' + str(
                 byte_size))  # check if we need this wording
 
+=======
+        generate_tree(dir_name, '', tree_output_file)           #TODO Check if we need this tree
+        byte_size = os.path.getsize(DPX_PATH + filename)
+        with open(size_output_file, 'w') as file:
+            file.write(filename + 'total folder size in bytes (du -s -b from BK-CI-DATA3): ' + str(byte_size))      #TODO Check if we need this wording
+        
+>>>>>>> 46478dcb5553a2f1de30f312ab1937d6252a45b8
         # Start comparison of first dpx file against mediaconch policy
         check = check_mediaconch_policy(POLICY_PATH, dir_name + '/' + dpx)
         check_str = check.stdout.decode()
@@ -148,8 +166,12 @@ if os.path.getsize(python_file) > 0:
         "Launching python script to process DPX sequences. Please see dpx_splitting_script.log for more details")
     with open(python_file, 'r') as file:
         file_list = set(file.read().splitlines())
+<<<<<<< HEAD
     with concurrent.futures.ThreadPoolExecutor(
             max_workers=1) as executor:  # Change to parallel processes rather than threads
+=======
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:        #TODO Change to parallel processes rather than threads
+>>>>>>> 46478dcb5553a2f1de30f312ab1937d6252a45b8
         futures = [executor.submit(run_script, PY3_LAUNCH, SPLITTING, argument) for argument in file_list]
         concurrent.futures.wait(futures)
 
