@@ -1,5 +1,7 @@
 env/
 automation_dpx/
 logs/
+media/encoding/
 .env
 .idea/
+*.log

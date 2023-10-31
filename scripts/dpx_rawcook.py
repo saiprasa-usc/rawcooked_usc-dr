@@ -33,6 +33,7 @@ reversibility_file = MKV_DEST + "reversibility_list.txt"
 queued_file = MKV_DEST + "temp_queued_list.txt"
 cooked_folder = MKV_DEST + "mkv_cooked"
 
+# Reading files from mkv_cooked folder and writing it to temp_queued_list
 with open(queued_file, 'w') as file:
     file.write("\n".join(os.listdir(cooked_folder)))
 
@@ -41,7 +42,6 @@ file_names = [temp_rawcooked_file, temp_retry_file, retry_file, rawcook_file]
 for file_name in file_names:
     with open(file_name, 'w') as f:
         pass
-
 
 # Write a START note to the logfile if files for encoding, else exit
 if os.path.isfile(reversibility_file):
@@ -66,7 +66,7 @@ for rev_file in rev_file_list:
     folder_retry = os.path.basename(rev_file)
     count_cooked_2 = 0
     count_queued_2 = 0
-    with open(MKV_DEST+"rawcooked_success.log", "r") as file:
+    with open(MKV_DEST + "rawcooked_success.log", "r") as file:
         for line in file:
             count_cooked_2 += line.count(folder_retry)
     with open(queued_file, "r") as file:
@@ -83,7 +83,7 @@ with open(temp_retry_file, 'r') as file:
     cook_retry = list(set(file.read().splitlines())).sort()
     print(cook_retry)
 
-log(logfile, "DPX folder will be cooked using --output-version 2:") #TODO Change this dumb logic
+log(logfile, "DPX folder will be cooked using --output-version 2:")  # TODO Change this dumb logic
 if cook_retry:
     with open(retry_file, 'w') as file:
         file.writelines(item + "\n" for item in cook_retry if cook_retry)
@@ -93,14 +93,14 @@ if cook_retry:
 # Begin RAWcooked processing with GNU Parallel using --output-version 2
 command = f'cat "{MKV_DEST}retry_list.txt" | parallel --jobs 4 "rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps --output-version 2 -s 5281680 ${DPX_PATH}{{}} -o ${MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"'
 subprocess.run(command, shell=True, check=True)
-#TODO change above command to parallel jobs
+# TODO change above command to parallel jobs
 
 # with open(retry_file, 'r') as file:
 #     filenames = file.read().splitlines()
 #
-# with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:          #TODO Change to parallel processes rather than threads
-#     futures = [executor.submit(run_command, command, "{}") for argument in filenames]
-#     concurrent.futures.wait(futures)
+# with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:          #TODO Change to parallel processes
+#  rather than threads futures = [executor.submit(run_command, command, "{}") for argument in filenames]
+#  concurrent.futures.wait(futures)
 
 # os.remove(reversibility_file)
 
@@ -113,7 +113,8 @@ temp_queued_list = os.listdir(cooked_folder)
 with open(queued_file, 'w') as file:
     file.write("\n".join(temp_queued_list))
 
-# When large reversibility cooks complete target all N_ folders, and pass any not already being processed to temporary_rawcook_list.txt
+# When large reversibility cooks complete target all N_ folders, and pass any not already being processed to
+# temporary_rawcook_list.txt
 log(logfile, "Outputting files from DPX_PATH to list, if not already queued")
 folders = find_directories(DPX_PATH, 1)
 for folder in folders:
@@ -122,7 +123,7 @@ for folder in folders:
         folder_clean = os.path.basename(folder)
         count_cooked = 0
         count_queued = 0
-        with open(MKV_DEST+"rawcooked_success.log", "r") as file:
+        with open(MKV_DEST + "rawcooked_success.log", "r") as file:
             for line in file:
                 count_cooked += line.count(folder_clean)
         with open(queued_file, "r") as file:
@@ -140,7 +141,7 @@ with open(temp_rawcooked_file, 'r') as file:
         if line.startswith("N_"):
             cook_list.append(line)
 
-log(logfile, "DPX folder will be cooked:")  #TODO Change this dumb logic
+log(logfile, "DPX folder will be cooked:")  # TODO Change this dumb logic
 if cook_list is not None:
     cook_list.sort()
     cook_list = list(set(cook_list))[0:20]
@@ -149,31 +150,42 @@ if cook_list is not None:
 
     log(logfile, "\n".join(cook_list))
 
-
 # Begin RAWcooked processing with GNU Parallel
-command = f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {DPX_PATH}{{}} -o {MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"'
-subprocess.run(command, shell=True, check=True)
-#TODO change above command to parallel jobs
+with open(rawcook_file, 'r') as file:
+    for line in file:
+        line = line.strip()
+        command = f'rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt'
+        subprocess.Popen(command, shell=True).wait()
+# command = (f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license 00C5BAEDE01E98D64496F0 -y --all '
+#            f'--no-accept-gaps -s 5281680 {DPX_PATH}{{}} -o {MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{'
+#            f'}}.mkv.txt"')
+# subprocess.run(command, shell=True, check=True)
+
+# TODO change above command to parallel jobs
 
 # with open (rawcook_file,'r') as file:
 #     filenames = file.read().splitlines()
 #     print(filenames)
 #
-#     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:          #Change to parallel processes rather than threads
-#         futures = [executor.submit(run_command, command, "{}") for argument in filenames]
-#         concurrent.futures.wait(futures)
+# with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:          #Change to parallel processes
+# rather than threads futures = [executor.submit(run_command, command, "{}") for argument in filenames]
+# concurrent.futures.wait(futures)
+with open(rawcook_file, 'r') as file:
+    for line in file:
+        line = line.strip()
+        command = f'rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 --framemd5 {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt'
+        subprocess.Popen(command, shell=True).wait()
 
-
-command = f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 --framemd5 {DPX_PATH}{{}} -o {MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"'
-subprocess.run(command, shell=True, check=True)
-#TODO change above command to parallel jobs
+# command = f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 --framemd5 {DPX_PATH}{{}} -o {MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"'
+# subprocess.run(command, shell=True, check=True)
+# TODO change above command to parallel jobs
 
 # with open (rawcook_file,'r') as file:
 #     filenames = file.read().splitlines()
 #
-#     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:          #Change to parallel processes rather than threads
-#         futures = [executor.submit(run_command, command, "{}") for argument in filenames]
-#         concurrent.futures.wait(futures)
+# with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:          #Change to parallel processes
+# rather than threads futures = [executor.submit(run_command, command, "{}") for argument in filenames]
+# concurrent.futures.wait(futures)
 
 log(logfile, "===================== DPX RAWcook ENDED =====================")
 
