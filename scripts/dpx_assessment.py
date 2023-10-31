@@ -168,7 +168,7 @@ with open(failure_file, 'a') as target:
     with open(tar_dpx_file, 'r') as source:
         target.write(source.read())
 
-# TODO: The DPX folders are not deleted from the dpx_to_assess. As it was happening with the shell scripts
+# TODO: The DPX folders are not deleted from the dpx_to_assess. As it was happening
 # Clean up temporary files
 for file_name in file_names:
     if os.path.exists(file_name):
