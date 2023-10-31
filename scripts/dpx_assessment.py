@@ -56,40 +56,39 @@ dirs = find_directories(DPX_PATH, depth)
 
 # Checking mediaconch policy for first DPX file in each folder
 for dir_name in dirs:
-    dpx = os.listdir(dir_name)[0]
+    path = Path(dir_name)
+    dpx = os.listdir(path)[0]
     components = dir_name.split('/')
-    dimensions = components[-1]
-    scans = components[-2]
-    filename = components[-3]
-    file_scan_name = filename + '/' + scans
+    dimensions = path.name
+    scans = path.parent.name
+    filename = path.parent.parent.name
+    file_scan_name = os.path.join(filename, scans)
     queued_pass = find_in_logs(DPX_PATH + "rawcook_dpx_success.log", file_scan_name)
     queued_fail = find_in_logs(DPX_PATH + "tar_dpx_failures.log", file_scan_name)
 
     if not queued_pass and not queued_fail:
         log(logfile, "Metadata file creation has started for:")
-        log(logfile, file_scan_name + '/' + dimensions + '/' + dpx)
-        mediainfo_output_file = DPX_PATH + file_scan_name + '/' + filename + '_' + dpx + '_metadata.txt'
-        tree_output_file = DPX_PATH + file_scan_name + '/' + filename + '_directory_contents.txt'
-        size_output_file = DPX_PATH + file_scan_name + '/' + filename + '_directory_total_byte_size.txt'
-        get_media_info('-f', dir_name + '/' + dpx, mediainfo_output_file)
+        log(logfile, os.path.join(file_scan_name, dimensions, dpx))
+        mediainfo_output_file = os.path.join(DPX_PATH, file_scan_name, f"{filename}_{dpx}_metadata.txt")
+        tree_output_file = os.path.join(DPX_PATH, file_scan_name, f"{filename}_directory_contents.txt")
+        size_output_file = os.path.join(DPX_PATH, file_scan_name, f"{filename}_directory_total_byte_size.txt")
+        get_media_info('-f', os.path.join(dir_name, dpx), mediainfo_output_file)
         generate_tree(dir_name, '', tree_output_file)  # Check if we need this tree
         byte_size = os.path.getsize(DPX_PATH + filename)
         with open(size_output_file, 'w') as file:
-            file.write(filename + 'total folder size in bytes (du -s -b from BK-CI-DATA3): ' + str(
-                byte_size))  # check if we need this wording
+            file.write(f"{filename} total folder size in bytes {str(byte_size)}")  # check if we need this wording
         # Start comparison of first dpx file against mediaconch policy
-        check = check_mediaconch_policy(POLICY_PATH, dir_name + '/' + dpx)
+        check = check_mediaconch_policy(POLICY_PATH, os.path.join(dir_name, dpx))
         check_str = check.stdout.decode()
 
-        if check_str.startswith('pass!'):
-            media_info = get_media_info('--Details=1', dir_name + '/' + dpx)
+        if check_str.startswith("pass!"):
+            media_info = get_media_info('--Details=1', os.path.join(dir_name, dpx))
             search_term = "Pixels per line:"
             pixel_matches = [line for line in media_info.splitlines() if search_term.lower() in line.lower()]
             pixels_per_line = int(re.split(r"\s+", pixel_matches[0])[4])
             if pixels_per_line > 3999:
-                log(logfile,
-                    "PASS: 4K scan" + file_scan_name + "has passed the MediaConch policy and can progress to "
-                                                       "RAWcooked processing path")
+                log(logfile, f"PASS: 4K scan {file_scan_name} has passed the MediaConch policy and can progress to "
+                             f"RAWcooked processing path")
                 with open(luma_4k_dpx_file, 'w') as file:
                     file.write(DPX_PATH + filename)
             else:
@@ -97,22 +96,20 @@ for dir_name in dirs:
                 descriptor_matches = [line for line in media_info.splitlines() if search_term.lower() in line.lower()]
                 luma_match = descriptor_matches[0].find("Luma (Y)")
                 if luma_match > 0:
-                    log(logfile,
-                        "PASS: Luma (Y) $file_scan_name has passed the MediaConch policy and can progress to "
-                        "RAWcooked processing path")
+                    log(logfile,f"PASS: Luma (Y) {file_scan_name} has passed the MediaConch policy and can progress "
+                                f"to RAWcooked processing path")
                     with open(luma_4k_dpx_file, 'w') as file:
                         file.write(DPX_PATH + filename)
                 else:
                     log(logfile,
-                        "PASS: RGB $file_scan_name has passed the MediaConch policy and can progress to RAWcooked "
-                        "processing path")
+                        f"PASS: RGB {file_scan_name} has passed the MediaConch policy and can progress to RAWcooked "
+                        f"processing path")
                     with open(rawcooked_dpx_file, 'w') as file:
                         file.write(DPX_PATH + filename)
 
         else:
             log(logfile,
-                "FAIL: " + file_scan_name + "DOES NOT CONFORM TO MEDIACONCH POLICY. Adding to "
-                                            "tar_dpx_failures_list.txt")
+                f"FAIL: {file_scan_name} DOES NOT CONFORM TO MEDIACONCH POLICY. Adding to tar_dpx_failures_list.txt")
             log(logfile, check_str)
             with open(tar_dpx_file, 'w') as file:
                 file.write(DPX_PATH + filename)
@@ -126,27 +123,27 @@ luma_4k_list = sort_split_list(luma_4k_dpx_file)
 if luma_4k_list:
     log(logfile, "RAWcooked Luma Y/4K path items for size check and Python splitting/moving script:")
     log(logfile, "\n".join(luma_4k_list))
-    luma_4k_size_dict = create_python_list(luma_4k_dpx_file, python_file, 'luma_4k')
+    luma_4k_size_dict = create_python_list(luma_4k_dpx_file, python_file, "luma_4k")
     for key in luma_4k_size_dict:
-        log(logfile, "Size of " + key + " is " + luma_4k_size_dict[key] + " KB. Passing to Python script...")
+        log(logfile, f"Size of {key} is {luma_4k_size_dict[key]} KB. Passing to Python script...")
 
 # Prepare tar_dpx_failure_list for DPX splitting script/move to TAR preservation
 tar_dpx_failure_list = sort_split_list(tar_dpx_file)
 if tar_dpx_failure_list:
     log(logfile, "TAR path items for size check and Python splitting/moving script:")
     log(logfile, "\n".join(tar_dpx_failure_list))
-    tar_size_dict = create_python_list(tar_dpx_file, python_file, 'tar')
+    tar_size_dict = create_python_list(tar_dpx_file, python_file, "tar")
     for key in tar_size_dict:
-        log(logfile, "Size of " + key + " is " + tar_size_dict[key] + " KB. Passing to Python script...")
+        log(logfile, f"Size of {key} is {tar_size_dict[key]} KB. Passing to Python script...")
 
 # Prepare dpx_success_list for DPX splitting script/move to TAR preservation
 dpx_success_list = sort_split_list(rawcooked_dpx_file)
 if dpx_success_list:
     log(logfile, "RAWcooked 2K RGB path items for size check and Python splitting/moving script:")
     log(logfile, "\n".join(dpx_success_list))
-    rawcooked_size_dict = create_python_list(rawcooked_dpx_file, python_file, 'rawcooked')
+    rawcooked_size_dict = create_python_list(rawcooked_dpx_file, python_file, "rawcooked")
     for key in rawcooked_size_dict:
-        log(logfile, "Size of " + key + " is " + rawcooked_size_dict[key] + " KB. Passing to Python script...")
+        log(logfile, f"Size of {key} is {rawcooked_size_dict[key]} KB. Passing to Python script...")
 
 if os.path.getsize(python_file) > 0:
     log(logfile,
@@ -161,7 +158,6 @@ if os.path.getsize(python_file) > 0:
     log(logfile, "===================== DPX assessment workflows ENDED =====================")
 
 # Append latest pass/failures to movement logs
-# TODO: Remove the file_pointer.close() calls as with clause handles it automatically
 with open(success_file, 'a') as target:
     with open(rawcooked_dpx_file, 'r') as source:
         target.write(source.read())
@@ -172,6 +168,7 @@ with open(failure_file, 'a') as target:
     with open(tar_dpx_file, 'r') as source:
         target.write(source.read())
 
+# TODO: The DPX folders are not deleted from the dpx_to_assess. As it was happening with the shell scripts
 # Clean up temporary files
 for file_name in file_names:
     if os.path.exists(file_name):
