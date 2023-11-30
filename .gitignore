@@ -4,4 +4,4 @@ logs/
 media/encoding/
 .env
 .idea/
-*.log
+*.log/
