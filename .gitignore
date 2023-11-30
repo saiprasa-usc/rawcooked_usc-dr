@@ -4,5 +4,6 @@ logs/
 media/encoding/
 .env
 .idea/
-*.log/
+*.log
 media/
+venv/
