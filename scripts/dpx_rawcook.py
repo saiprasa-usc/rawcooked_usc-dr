@@ -21,7 +21,7 @@ SCRIPT_LOG = os.environ.get('FILM_OPS') + os.environ.get('DPX_SCRIPT_LOG')
 DPX_PATH = os.environ.get('FILM_OPS') + os.environ.get('DPX_COOK')
 MKV_DEST = os.environ.get('FILM_OPS') + os.environ.get('MKV_ENCODED')
 
-logfile = "dpx_rawcook.log"
+logfile = SCRIPT_LOG + "dpx_rawcook.log"
 
 # Remove or generate temporary files per script run
 temp_rawcooked_file = MKV_DEST + "temporary_rawcook_list.txt"
@@ -151,8 +151,13 @@ if cook_list is not None:
 
 
 # Begin RAWcooked processing with GNU Parallel
-command = f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {DPX_PATH}{{}} -o {MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"'
-subprocess.run(command, shell=True, check=True)
+with open(rawcook_file, 'r') as file:
+    for line in file:
+        line = line.strip()
+        command = f'rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt'
+        subprocess.Popen(command, shell=True).wait()
+# command = f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {DPX_PATH}{{}} -o {MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"'
+# subprocess.run(command, shell=True, check=True)
 #TODO change above command to parallel jobs
 
 # with open (rawcook_file,'r') as file:
@@ -163,9 +168,13 @@ subprocess.run(command, shell=True, check=True)
 #         futures = [executor.submit(run_command, command, "{}") for argument in filenames]
 #         concurrent.futures.wait(futures)
 
-
-command = f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 --framemd5 {DPX_PATH}{{}} -o {MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"'
-subprocess.run(command, shell=True, check=True)
+with open(rawcook_file, 'r') as file:
+    for line in file:
+        line = line.strip()
+        command = f'rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 --framemd5 {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt'
+        subprocess.Popen(command, shell=True).wait()
+# command = f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 --framemd5 {DPX_PATH}{{}} -o {MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"'
+# subprocess.run(command, shell=True, check=True)
 #TODO change above command to parallel jobs
 
 # with open (rawcook_file,'r') as file:
