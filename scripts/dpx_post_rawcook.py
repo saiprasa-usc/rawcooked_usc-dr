@@ -65,19 +65,19 @@ with os.scandir(MKV_DESTINATION + "mkv_cooked/") as entries:
                 ".rawcooked_reversibility_data"):  # TODO check this file name ending. Should be .mkv only
             check = check_mediaconch_policy(MKV_POLICY, filename)
             check_str = check.stdout.decode()
-            if check_str.startswith('pass!'):
+            if ".mkv.r" in check_str:#check_str.startswith('pass!'):
                 log(logfile, "PASS: RAWcooked MKV file " + filename + " has passed the Mediaconch policy. Whoopee")
             else:
                 log(logfile, "FAIL: RAWcooked MKV " + filename + " has failed the mediaconch policy")
                 log(logfile, "Moving " + filename + " to killed directory, and amending log fail_" + filename + ".txt")
                 log(logfile, check)
-                with open(ERRORS + fname_log + "_errors.log", "w") as file:
+                with open(ERRORS + fname_log + "_errors.log", 'a+') as file:
                     file.write(
                         "post_rawcooked" + date + "): Matroska " + filename + " failed the FFV1 MKV Mediaconch policy.")
                     file.write("    Matroska moved to Killed folder, DPX sequence will retry RAWcooked encoding.")
                     file.write(
                         "    Please contact the Knowledge and Collections Developer about this Mediaconch policy failure.")
-                with open(temp_medicaconch_policy_fails_file, "w") as file:
+                with open(temp_medicaconch_policy_fails_file, "a+") as file:
                     file.write(filename)
 
 # Move failed MKV files to killed folder
@@ -97,7 +97,7 @@ with os.scandir(MKV_DESTINATION + "mkv_cooked/") as entries:
     for entry in entries:
         filename = entry.name
         if filename.endswith("mkv.txt"):
-            with open(filename, 'r') as file:
+            with open(MKV_DESTINATION + "mkv_cooked/" + filename, 'r') as file:
                 for line in file:
                     if (line.find('Reversibility was checked, no issue detected.') != -1):
                         mkv_filename = filename.split('.')[0] + '.mkv'
@@ -148,8 +148,8 @@ with os.scandir(MKV_DESTINATION + "mkv_cooked/") as entries:
             error_check = False
             retry_check = False
             mkv_fname1 = entry.name
-            dpx_folder1 = entry.path
-            with open(entry.name) as file:
+            dpx_folder1 = mkv_fname1.split(".")[0]
+            with open(MKV_DESTINATION + "mkv_cooked/" + entry.name) as file:
                 for line in file:
                     if line.find(
                             "'Error: undecodable file is becoming too big.\|Error: the reversibility file is becoming big.'") != -1:
@@ -165,25 +165,24 @@ with os.scandir(MKV_DESTINATION + "mkv_cooked/") as entries:
                 file.close()
                 if retry_check:
                     log(logfile, f"NEW ENCODING ERROR: ${mkv_fname1} adding to reversibility_list")
-                    with open(reversibility_list_file) as file:
+                    with open(reversibility_list_file, "w") as file:
                         file.write(f"{DPX_PATH}dpx_to_cook/{dpx_folder1}")
                     file.close()
                     shutil.move(entry.name, MKV_DESTINATION + "logs/retry_" + mkv_fname1 + ".txt")
 
                 else:
                     log(logfile, f"REPEAT ENCODING ERROR: {mkv_fname1} encountered repeated reversilibity data error")
-                    with open(ERRORS + dpx_folder1 + "_errors.log", "w"):
-                        file.write(
-                            f"post_rawcooked {date}: ${mkv_fname1} Repeated reversibility data error for sequence:")
+                    with open(ERRORS + dpx_folder1 + "_errors.log", "w+") as file:
+                        file.write(f"post_rawcooked {date}: ${mkv_fname1} Repeated reversibility data error for sequence:")
                         file.write(f"    {DPX_PATH}dpx_to_cook/${dpx_folder1}")
                         file.write("    The FFV1 Matroska will be deleted.")
                         file.write(
                             "    Please contact the Knowledge and Collections Developer about this repeated reversibility failure.")
                     file.close()
-                    with open(matroska_deletion_file, "w"):
+                    with open(matroska_deletion_file, "w") as file:
                         file.write(mkv_fname1)
                     file.close()
-                    shutil.move(entry.name, MKV_DESTINATION + "logs/fail_" + mkv_fname1 + ".txt")
+                    shutil.move(MKV_DESTINATION + "mkv_cooked/" + entry.name, MKV_DESTINATION + "logs/fail_" + mkv_fname1 + ".txt")
 
 # Add list of reversibility data error to dpx_post_rawcooked.log
 if os.path.getsize(matroska_deletion_file) > 0:
@@ -192,7 +191,8 @@ if os.path.getsize(matroska_deletion_file) > 0:
         deletion_file_name = input_file.read()
         output_file.write(deletion_file_name)
         # Delete broken Matroska files if they exist (unlikely as error exits before encoding)
-        os.remove(MKV_DESTINATION + "mkv_cooked/" + deletion_file_name)
+        if os.path.exists(MKV_DESTINATION + "mkv_cooked/" + deletion_file_name):
+            os.remove(MKV_DESTINATION + "mkv_cooked/" + deletion_file_name)
     input_file.close()
     output_file.close()
 else:

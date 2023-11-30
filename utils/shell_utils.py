@@ -1,5 +1,8 @@
+import concurrent
 import subprocess
 import os
+from concurrent.futures import ThreadPoolExecutor
+from shutil import move
 
 
 def get_media_info(flags, filename, output_file=None):
@@ -46,3 +49,26 @@ def run_command(command, argument=None):
         command = command.replace("argument", argument)
     print("Running: " + command)
     subprocess.run(command, shell=True, check=True)
+
+
+def move_file(filename, source_dir, destination_dir):
+    source_path = os.path.join(source_dir, filename)
+    destination_path = os.path.join(destination_dir, filename)
+    try:
+        move(source_path, destination_path)
+        print(f"Moved: {source_path} to {destination_path}")
+    except Exception as e:
+        print(f"Error moving {source_path} to {destination_path}: {e}")
+
+
+def move_files_parallel(source_dir, destination_dir, file_list, num_jobs):
+    with ThreadPoolExecutor(max_workers=num_jobs) as executor:
+        futures = {executor.submit(move_file, filename, source_dir, destination_dir): filename for filename in
+                   file_list}
+
+        for future in concurrent.futures.as_completed(futures):
+            filename = futures[future]
+            try:
+                future.result()
+            except Exception as e:
+                print(f"Error moving {filename}: {e}")
