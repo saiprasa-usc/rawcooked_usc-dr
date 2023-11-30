@@ -81,14 +81,18 @@ with os.scandir(MKV_DESTINATION + "mkv_cooked/") as entries:
                     file.write(filename)
 
 # Move failed MKV files to killed folder
-file_list = []
+failed_mkv_file_list = []
+failed_txt_file_list = []
 with open(temp_medicaconch_policy_fails_file, 'r') as file:
     for line in file:
-        file_list.append(line)
-move_files_parallel(MKV_DESTINATION + 'mkv_cooked/', MKV_DESTINATION + 'killed/', file_list,
+        if(line.endswith(".mkv")):
+            failed_mkv_file_list.append(line)
+        elif(line.endswith(".txt")):
+            failed_txt_file_list.append(line)
+move_files_parallel(MKV_DESTINATION + 'mkv_cooked/', MKV_DESTINATION + 'killed/', failed_mkv_file_list,
                     10)  # TODO rename mkv_cooked to a vairable
 # Move the txt files to logs folder and prepend -fail- to filename
-move_files_parallel(MKV_DESTINATION + 'mkv_cooked/', MKV_DESTINATION + 'logs/', file_list, 10)  # TODO prepend fail_
+move_files_parallel(MKV_DESTINATION + 'mkv_cooked/', MKV_DESTINATION + 'logs/', failed_txt_file_list, 10)  # TODO prepend fail_
 
 # ===================================================================================
 # Log check passes move to MKV Check folder and logs folders, and DPX folder move ===
