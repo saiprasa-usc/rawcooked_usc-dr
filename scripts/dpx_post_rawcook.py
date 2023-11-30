@@ -85,9 +85,9 @@ failed_mkv_file_list = []
 failed_txt_file_list = []
 with open(temp_medicaconch_policy_fails_file, 'r') as file:
     for line in file:
-        if(line.endswith(".mkv")):
+        if line.endswith(".mkv"):
             failed_mkv_file_list.append(line)
-        elif(line.endswith(".txt")):
+        elif line.endswith(".txt"):
             failed_txt_file_list.append(line)
 move_files_parallel(MKV_DESTINATION + 'mkv_cooked/', MKV_DESTINATION + 'killed/', failed_mkv_file_list,
                     10)  # TODO rename mkv_cooked to a vairable
