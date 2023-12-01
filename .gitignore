@@ -1,5 +1,10 @@
 env/
 automation_dpx/
 logs/
-media/
+media/encoding/
 .env
+.idea/
+*.log
+media/
+venv/
+utils/__pycache__/*

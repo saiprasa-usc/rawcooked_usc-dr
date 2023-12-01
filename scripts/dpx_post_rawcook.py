@@ -65,7 +65,7 @@ with os.scandir(MKV_DESTINATION + "mkv_cooked/") as entries:
                 ".rawcooked_reversibility_data"):  # TODO check this file name ending. Should be .mkv only
             check = check_mediaconch_policy(MKV_POLICY, filename)
             check_str = check.stdout.decode()
-            if ".mkv.r" in check_str:#check_str.startswith('pass!'):
+            if ".mkv.r" in check_str:  # check_str.startswith('pass!'):
                 log(logfile, "PASS: RAWcooked MKV file " + filename + " has passed the Mediaconch policy. Whoopee")
             else:
                 log(logfile, "FAIL: RAWcooked MKV " + filename + " has failed the mediaconch policy")
@@ -92,8 +92,9 @@ with open(temp_medicaconch_policy_fails_file, 'r') as file:
 move_files_parallel(MKV_DESTINATION + 'mkv_cooked/', MKV_DESTINATION + 'killed/', failed_mkv_file_list,
                     10)  # TODO rename mkv_cooked to a vairable
 # Move the txt files to logs folder and prepend -fail- to filename
-move_files_parallel(MKV_DESTINATION + 'mkv_cooked/', MKV_DESTINATION + 'logs/', failed_txt_file_list, 10)  # TODO prepend fail_
 
+move_files_parallel(MKV_DESTINATION + 'mkv_cooked/', MKV_DESTINATION + 'logs/', failed_txt_file_list,
+                    10)  # TODO prepend fail_
 # ===================================================================================
 # Log check passes move to MKV Check folder and logs folders, and DPX folder move ===
 # ===================================================================================
@@ -177,7 +178,8 @@ with os.scandir(MKV_DESTINATION + "mkv_cooked/") as entries:
                 else:
                     log(logfile, f"REPEAT ENCODING ERROR: {mkv_fname1} encountered repeated reversilibity data error")
                     with open(ERRORS + dpx_folder1 + "_errors.log", "w+") as file:
-                        file.write(f"post_rawcooked {date}: ${mkv_fname1} Repeated reversibility data error for sequence:")
+                        file.write(
+                            f"post_rawcooked {date}: ${mkv_fname1} Repeated reversibility data error for sequence:")
                         file.write(f"    {DPX_PATH}dpx_to_cook/${dpx_folder1}")
                         file.write("    The FFV1 Matroska will be deleted.")
                         file.write(
@@ -186,7 +188,8 @@ with os.scandir(MKV_DESTINATION + "mkv_cooked/") as entries:
                     with open(matroska_deletion_file, "w") as file:
                         file.write(mkv_fname1)
                     file.close()
-                    shutil.move(MKV_DESTINATION + "mkv_cooked/" + entry.name, MKV_DESTINATION + "logs/fail_" + mkv_fname1 + ".txt")
+                    shutil.move(MKV_DESTINATION + "mkv_cooked/" + entry.name,
+                                MKV_DESTINATION + "logs/fail_" + mkv_fname1 + ".txt")
 
 # Add list of reversibility data error to dpx_post_rawcooked.log
 if os.path.getsize(matroska_deletion_file) > 0:
@@ -233,12 +236,13 @@ with os.scandir(MKV_DESTINATION + "mkv_cooked/") as entries:
             file.close()
         if error_check:
             log(logfile, f"UNKNOWN ENCODING ERROR: {mkv_fname} encountered error")
-            with open(dpx_folder+"_errors.log", "w") as file:
-                file.write(DPX_PATH+"dpx_to_cook/"+dpx_folder)
+            with open(dpx_folder + "_errors.log", "w") as file:
+                file.write(DPX_PATH + "dpx_to_cook/" + dpx_folder)
                 file.write(f"post_rawcooked {date}: {mkv_fname} Repeat encoding error raised for sequence:")
                 file.write(f"    {DPX_PATH}dpx_to_cook/{dpx_folder}")
                 file.write(f"    Matroska file will be deleted.")
-                file.write(f"    Please contact the Knowledge and Collections Developer about this repeated encoding failure")
+                file.write(
+                    f"    Please contact the Knowledge and Collections Developer about this repeated encoding failure")
             file.close()
             with open(matroska_deletion_file, "a") as file:
                 file.write(f"{mkv_fname}")
@@ -257,15 +261,17 @@ with os.scandir(MKV_DESTINATION + "mkv_cooked/") as entries:
         if entry.name.endswith(".mkv.txt"):
             stale_fname = entry.name
             stale_basename = entry.path
-            fname_log= entry.path.split('/')[0]
-            log(logfile, f"Stalled/killed encoding: {stale_basename}. Adding to stalled list and deleting log file and Matroska")
+            fname_log = entry.path.split('/')[0]
+            log(logfile,
+                f"Stalled/killed encoding: {stale_basename}. Adding to stalled list and deleting log file and Matroska")
             with open(stale_encodings_file, "w") as file:
                 file.write(stale_fname)
             file.close()
-            with open(ERRORS+fname_log+"_errors.log", "a") as file:
+            with open(ERRORS + fname_log + "_errors.log", "a") as file:
                 file.write(f"post_rawcooked {date}: Matroka {stale_fname} encoding stalled mid_process.")
                 file.write(f"    Matrosk and failed log deleted. DPX sequence will retry RAWCooked encoding.")
-                file.write(f"    Please contact the Knowledge and Collections Developer if this item repeatedly stalls.")
+                file.write(
+                    f"    Please contact the Knowledge and Collections Developer if this item repeatedly stalls.")
             file.close()
 
 # Add list of stalled logs to post_rawcooked.log
@@ -286,10 +292,10 @@ log(logfile, "===================== Post-rawcook workflows ENDED ===============
 
 # Update the count of successful cooks at top of the success log
 # First create new temp_success_log with timestamp
-with open(MKV_DESTINATION+"temp_rawcooked_success.log", "w") as output_file:
+with open(MKV_DESTINATION + "temp_rawcooked_success.log", "w") as output_file:
     output_file.write(f"===================== Updated ===================== {date}")
     # Count lines in success_log and create count variable, output that count to new success log, then output all lines with /home* to the new log
-    with open(MKV_DESTINATION+"rawcooked_success.log", "r") as input_file:
+    with open(MKV_DESTINATION + "rawcooked_success.log", "r") as input_file:
         lines = input_file.readlines()
         success_count = len(lines)
         for line in lines:
@@ -299,18 +305,17 @@ with open(MKV_DESTINATION+"temp_rawcooked_success.log", "w") as output_file:
 output_file.close()
 
 # Sort the log and remove any non-unique lines
-with open(MKV_DESTINATION+"temp_rawcooked_success.log", "r") as file:
+with open(MKV_DESTINATION + "temp_rawcooked_success.log", "r") as file:
     lines = file.readlines()
     unique = list(set(lines))
     unique.sort()
 file.close()
 
-with open(MKV_DESTINATION+"temp_rawcooked_success_unique.log", "w") as file:
+with open(MKV_DESTINATION + "temp_rawcooked_success_unique.log", "w") as file:
     file.writelines(unique)
 
 for filename in file_names:
     os.remove(filename)
 
-shutil.move(MKV_DESTINATION+"temp_rawcooked_success_unique.log", MKV_DESTINATION+"rawcooked_success.log")
-
+shutil.move(MKV_DESTINATION + "temp_rawcooked_success_unique.log", MKV_DESTINATION + "rawcooked_success.log")
 
