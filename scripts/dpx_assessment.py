@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 import os
 import re
 import concurrent.futures
+import shutil
 
 # Load environment variables from .env file
 load_dotenv()
@@ -23,6 +24,8 @@ DPX_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('DPX_ASSESS')
 PY3_LAUNCH = os.environ.get('PY3_ENV')
 SPLITTING = os.environ.get('SPLITTING_SCRIPT_FILMOPS')
 POLICY_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('POLICY_DPX'))
+RAWCOOKED_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ['DPX_COOK'])
+
 
 
 class DpxAssessment:
@@ -52,10 +55,10 @@ class DpxAssessment:
                 pass
             print(f"Created file: {file_name}")
 
-    def check_mediaconch_policy(self):
+    def check_mediaconch_policy(self, depth):
         # Loop that retrieves single DPX file in each folder, runs Mediaconch check and generates metadata files
         # Configured for three level folders: N_123456_01of01/scan01/dimensions/<dpx_seq>
-        depth = 3  # Take as user input
+        # depth = 3  # Take as user input
         dirs = find_directories(DPX_PATH, depth)
         # Checking mediaconch policy for first DPX file in each folder
         for dir_name in dirs:
@@ -157,12 +160,16 @@ class DpxAssessment:
     def split(self):
         if os.path.getsize(self.python_file) > 0:
             log(self.logfile,
-                "Launching python script to process DPX sequences. Please see dpx_splitting_script.log for more details")
+                "Launching python script to process DPX sequences. Please see dpx_splitting_script.log for more details. IGNORE LOG NO SPLITTING OCCURS")
+
             with open(self.python_file, 'r') as file:
                 file_list = set(file.read().splitlines())
-            with concurrent.futures.ThreadPoolExecutor() as executor:  # Change to parallel processes rather than threads
-                futures = [executor.submit(run_script, PY3_LAUNCH, SPLITTING, argument) for argument in file_list]
-                concurrent.futures.wait(futures)
+                dpx_path = [ file.split(',')[1].strip() for file in file_list ]
+            for file in dpx_path:
+                shutil.move(file, RAWCOOKED_PATH)
+            # with concurrent.futures.ThreadPoolExecutor() as executor:  # Change to parallel processes rather than threads
+            #     futures = [executor.submit(run_script, PY3_LAUNCH, SPLITTING, argument) for argument in file_list]
+            #     concurrent.futures.wait(futures)
 
             log(self.logfile, "===================== DPX assessment workflows ENDED =====================")
 
@@ -193,7 +200,7 @@ class DpxAssessment:
         # TODO: Implement error handling mechanisms
 
         self.process()
-        self.check_mediaconch_policy()
+        self.check_mediaconch_policy(3) # Takes dept as argument
         self.prepare_for_splitting()
         self.split()
         self.log_success_failure()

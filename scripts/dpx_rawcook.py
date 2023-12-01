@@ -55,6 +55,10 @@ class DpxRawcook:
             with open(file_name, 'w') as f:
                 pass
 
+        if not os.path.exists(self.reversibility_file):
+            with open(self.reversibility_file, 'w') as f:
+                pass
+
         # Write a START note to the logfile if files for encoding, else exit
         if os.path.isfile(self.reversibility_file):
             log(self.logfile, "============= DPX RAWcook script START =============")
@@ -205,6 +209,7 @@ class DpxRawcook:
 
     def execute(self):
         # TODO: Implement Error handling mechanisms
+        # TODO: Clean unnecessary print statements
         self.process()
         self.pass_one()
         self.pass_two()
