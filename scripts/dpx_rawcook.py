@@ -17,6 +17,9 @@ SCRIPT_LOG = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('DPX_SCRIPT
 DPX_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('DPX_COOK'))
 MKV_DEST = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('MKV_ENCODED'))
 
+SCRIPT_LOG = r'{}'.format(SCRIPT_LOG)
+DPX_PATH = r'{}'.format(DPX_PATH)
+MKV_DEST = r'{}'.format(MKV_DEST)
 
 def process_mkv(line, md5_checksum=False):
     # By observation, any rawcooked failed will result return code 0 but message is captured in stderr
@@ -99,7 +102,7 @@ class DpxRawcook:
         with open(self.temp_retry_file, 'r') as file:
             cook_retry = list(set(file.read().splitlines()))
             cook_retry.sort()
-            print(cook_retry)
+
 
             log(self.logfile, "DPX folder will be cooked using --output-version 2:")  # TODO Change this dumb logic
             if cook_retry and len(cook_retry) > 0:
@@ -108,11 +111,12 @@ class DpxRawcook:
 
                 log(self.logfile, (item + "\n" for item in cook_retry if cook_retry))
 
+
         with open(f'{MKV_DEST}retry_list.txt') as retry_list:
             for file_name in retry_list:
                 with concurrent.futures.ProcessPoolExecutor() as executor:
                     f0 = executor.submit(process_mkv_output_v2, file_name)
-                    print("DEBUG", f0.result())
+
 
         # # Begin RAWcooked processing with GNU Parallel using --output-version 2
         # command = f'cat "{MKV_DEST}retry_list.txt" | parallel --jobs 4 "rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps --output-version 2 -s 5281680 ${DPX_PATH}{{}} -o ${MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"'
@@ -136,7 +140,7 @@ class DpxRawcook:
         for folder in folders:
 
             name = folder.split('/')[-1]
-            if name.startswith("N_"):
+            if name is not None:
                 folder_clean = os.path.basename(folder)
 
                 count_cooked = 0
@@ -157,7 +161,7 @@ class DpxRawcook:
         # Sort the temporary_rawcook_list by part of extension, pass first 20 to rawcook_list.txt and write items to log
         with open(self.temp_rawcooked_file, 'r') as file:
             for line in file:
-                if line.startswith("N_"):
+                if line is not None:
                     cook_list.append(line)
 
         log(self.logfile, "DPX folder will be cooked:")  # TODO Change this dumb logic
@@ -171,23 +175,24 @@ class DpxRawcook:
 
         # Begin RAWcooked processing with GNU Parallel
 
-        with open(f'{MKV_DEST}rawcook_list.txt') as cook_list:
+        path = f'{MKV_DEST}rawcook_list.txt'
+        path = r'{}'.format(path)
+        with open(path) as cook_list:
             for file_name in cook_list:
                 print("DEBUG", file_name)
                 with concurrent.futures.ProcessPoolExecutor() as executor:
                     f1 = executor.submit(process_mkv, file_name, False)
-                    print("DEBUG", f1.result())
 
         # command = (f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license
         # 00C5BAEDE01E98D64496F0 -y --all ' f'--no-accept-gaps -s 5281680 {DPX_PATH}{{}} -o {MKV_DEST}mkv_cooked/{{
         # }}.mkv &>> {MKV_DEST}mkv_cooked/{{' f'}}.mkv.txt"') process = subprocess.run(command, shell=True,
         # capture_output=True) TODO change above command to parallel jobs
 
-        with open(f'{MKV_DEST}rawcook_list.txt') as cook_list:
+        with open(path) as cook_list:
             for file_name in cook_list:
                 with concurrent.futures.ProcessPoolExecutor() as executor:
                     f2 = executor.submit(process_mkv, file_name, True)
-                    print("DEBUG", f2.result())
+
 
         # command = f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license
         # 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 --framemd5 {DPX_PATH}{{}} -o {

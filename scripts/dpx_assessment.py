@@ -164,7 +164,7 @@ class DpxAssessment:
 
             with open(self.python_file, 'r') as file:
                 file_list = set(file.read().splitlines())
-                dpx_path = [ file.split(',')[1].strip() for file in file_list ]
+                dpx_path = [file.split('%')[1].strip() for file in file_list]
             for file in dpx_path:
                 shutil.move(file, RAWCOOKED_PATH)
             # with concurrent.futures.ThreadPoolExecutor() as executor:  # Change to parallel processes rather than threads
@@ -200,7 +200,8 @@ class DpxAssessment:
         # TODO: Implement error handling mechanisms
 
         self.process()
-        self.check_mediaconch_policy(3) # Takes dept as argument
+        # TODO: Fix depth issue
+        self.check_mediaconch_policy(3) # Takes dept as argument. BROKEN
         self.prepare_for_splitting()
         self.split()
         self.log_success_failure()

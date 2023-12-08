@@ -26,5 +26,5 @@ def create_python_list(source_textfile, target_textfile, type):
                 for line in source:
                     kb_size = os.popen(f"du -s {line}").read().strip().split()[0]
                     size_dict[line] = kb_size
-                    target.write(kb_size + ", " + line + ", " + type)
+                    target.write(kb_size + "% " + line + "% " + type)
     return size_dict
