@@ -55,7 +55,7 @@ class DpxAssessment:
                 pass
             print(f"Created file: {file_name}")
 
-    def check_mediaconch_policy(self, depth):
+    def check_mediaconch_policy(self, depth) -> bool:
         # Loop that retrieves single DPX file in each folder, runs Mediaconch check and generates metadata files
         # Configured for three level folders: N_123456_01of01/scan01/dimensions/<dpx_seq>
         # depth = 3  # Take as user input
@@ -124,10 +124,13 @@ class DpxAssessment:
                     with open(self.tar_dpx_file, 'w') as file:
                         file.write(DPX_PATH + filename)
 
+                    return False
+
             else:
                 log(self.logfile,
                     "SKIPPING DPX folder, it has already been processed but has not moved to correct processing path:")
                 log(self.logfile, file_scan_name)
+        return True
 
     def prepare_for_splitting(self):
         # Prepare luma_4k_dpx_list for DPX splitting script/move to RAWcooked preservation
@@ -201,9 +204,12 @@ class DpxAssessment:
 
         self.process()
         # TODO: Fix depth issue
-        self.check_mediaconch_policy(3) # Takes dept as argument. BROKEN
-        self.prepare_for_splitting()
-        self.split()
+        passed = self.check_mediaconch_policy(3) # Takes dept as argument. BROKEN
+
+        if passed:
+            self.prepare_for_splitting()
+            self.split()
+
         self.log_success_failure()
         self.clean()
 

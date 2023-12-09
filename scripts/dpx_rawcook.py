@@ -1,4 +1,9 @@
+import asyncio
+import logging
 import subprocess
+import sys
+import threading
+
 from utils.find_utils import find_directories
 from utils.logging_utils import log
 import concurrent.futures
@@ -21,11 +26,28 @@ SCRIPT_LOG = r'{}'.format(SCRIPT_LOG)
 DPX_PATH = r'{}'.format(DPX_PATH)
 MKV_DEST = r'{}'.format(MKV_DEST)
 
+logger = logging.getLogger(__name__)
+
+
+# logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s", datefmt="[%X]")
+
+
+# def log_info(program: str, line: str, filename: str):
+#
+#
+#     logger.info("%s : %s", program, line.rstrip())
+
+# It will not create the .mkv.txt file as Popen() will dump the output in realtime to the console
 def process_mkv(line, md5_checksum=False):
     # By observation, any rawcooked failed will result return code 0 but message is captured in stderr
-    code = f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum else ''} {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt"
-    p = subprocess.run(code, shell=True, check=True, stderr=subprocess.PIPE)
-    return "CODE", p.returncode, p.stderr
+    # code = f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum else ''} {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt"
+    string_command = f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum else ''} {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv"
+    output_file_name = f"{MKV_DEST}mkv_cooked/{line}.mkv.txt"
+    command = string_command.split(" ")
+    command = filter(lambda x: len(x) > 0, command)
+    command = list(command)
+    with subprocess.Popen(command, text=True) as proc:
+        proc.wait()
 
 
 def process_mkv_output_v2(line):
@@ -103,7 +125,6 @@ class DpxRawcook:
             cook_retry = list(set(file.read().splitlines()))
             cook_retry.sort()
 
-
             log(self.logfile, "DPX folder will be cooked using --output-version 2:")  # TODO Change this dumb logic
             if cook_retry and len(cook_retry) > 0:
                 with open(self.retry_file, 'w') as file:
@@ -111,12 +132,10 @@ class DpxRawcook:
 
                 log(self.logfile, (item + "\n" for item in cook_retry if cook_retry))
 
-
         with open(f'{MKV_DEST}retry_list.txt') as retry_list:
             for file_name in retry_list:
                 with concurrent.futures.ProcessPoolExecutor() as executor:
                     f0 = executor.submit(process_mkv_output_v2, file_name)
-
 
         # # Begin RAWcooked processing with GNU Parallel using --output-version 2
         # command = f'cat "{MKV_DEST}retry_list.txt" | parallel --jobs 4 "rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps --output-version 2 -s 5281680 ${DPX_PATH}{{}} -o ${MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"'
@@ -192,8 +211,6 @@ class DpxRawcook:
             for file_name in cook_list:
                 with concurrent.futures.ProcessPoolExecutor() as executor:
                     f2 = executor.submit(process_mkv, file_name, True)
-
-
         # command = f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license
         # 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 --framemd5 {DPX_PATH}{{}} -o {
         # MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"' process = subprocess.run(command,
