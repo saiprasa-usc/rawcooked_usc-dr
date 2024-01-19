@@ -21,8 +21,7 @@ def find_directories(folder_name, target_depth):
     folders_at_depth = []
 
     for root, dirs, files in os.walk(folder_name):
-        current_depth = root[len(folder_name) + len(os.sep):].count(os.sep)
-
+        current_depth = root[len(folder_name) + len(os.path.sep):].count(os.path.sep)
         if current_depth == target_depth - 1:
             folders_at_depth.append(root)
 

@@ -34,14 +34,16 @@ logger = logging.getLogger(__name__)
 #     logger.info("%s : %s", program, line.rstrip())
 
 # It will not create the .mkv.txt file as Popen() will dump the output in realtime to the console
-def process_mkv(line, md5_checksum=False):
+def process_mkv(file_name: str, md5_checksum: bool = False):
     # By observation, any rawcooked failed will result return code 0 but message is captured in stderr
     # code = f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum else ''} {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt"
-    string_command = f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum else ''} {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv"
-    output_file_name = f"{MKV_DEST}mkv_cooked/{line}.mkv.txt"
+    file_name = file_name.rstrip()
+    string_command = f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum else ''} {DPX_PATH}{file_name} -o {MKV_DEST}mkv_cooked/{file_name}.mkv"
+    output_file_name = f"{MKV_DEST}mkv_cooked/{file_name}.mkv.txt"
     command = string_command.split(" ")
     command = filter(lambda x: len(x) > 0, command)
     command = list(command)
+    print(command)
     with subprocess.Popen(command, text=True) as proc:
         proc.wait()
 
@@ -121,7 +123,7 @@ class DpxRawcook:
             cook_retry = list(set(file.read().splitlines()))
             cook_retry.sort()
 
-            logging_utils.log(self.logfile, "DPX folder will be cooked using --output-version 2:")  # TODO Change this dumb logic
+            logging_utils.log(self.logfile, "DPX folder will be cooked using --output-version 2:")
             if cook_retry and len(cook_retry) > 0:
                 with open(self.retry_file, 'w') as file:
                     file.writelines(item + "\n" for item in cook_retry if cook_retry)
@@ -152,12 +154,14 @@ class DpxRawcook:
         # temporary_rawcook_list.txt
         logging_utils.log(self.logfile, "Outputting files from DPX_PATH to list, if not already queued")
         folders = find_utils.find_directories(DPX_PATH, 1)
+        folders = [f for f in folders if f != DPX_PATH]
+        print("FOLDERS:", folders)
         for folder in folders:
 
             name = folder.split('/')[-1]
             if name is not None:
                 folder_clean = os.path.basename(folder)
-
+                print("NAME:", folder_clean)
                 count_cooked = 0
                 count_queued = 0
                 with open(MKV_DEST + "rawcooked_success.log", "r") as file:
@@ -169,7 +173,7 @@ class DpxRawcook:
                     print(count_queued)
                 if count_cooked == 0 and count_queued == 0:
                     with open(self.temp_rawcooked_file, 'a') as file:
-                        file.write(folder_clean)
+                        file.write(f"{folder_clean}\n")
 
         cook_list = []
 
@@ -182,11 +186,13 @@ class DpxRawcook:
         logging_utils.log(self.logfile, "DPX folder will be cooked:")  # TODO Change this dumb logic
         if cook_list is not None:
             cook_list.sort()
+            print(cook_list)
             cook_list = list(set(cook_list))[0:20]
             with open(self.rawcook_file, 'w') as file:
-                file.write("\n".join(cook_list))
+                for file_name in cook_list:
+                    file.write(file_name)
 
-            logging_utils.log(self.logfile, "\n".join(cook_list))
+            logging_utils.log(self.logfile, "".join(cook_list))
 
         # Begin RAWcooked processing with GNU Parallel
 
@@ -234,5 +240,6 @@ class DpxRawcook:
         self.clean()
 
 
-dpx_rawcook = DpxRawcook()
-dpx_rawcook.execute()
+if __name__ == '__main__':
+    dpx_rawcook = DpxRawcook()
+    dpx_rawcook.execute()
