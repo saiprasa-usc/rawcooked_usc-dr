@@ -9,6 +9,7 @@ def log(logfile, message):
     @param logfile: The path of the log file
     @param message: The message that we want to append
     """
+
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d - %H:%M:%S")
     log_message = f"{message} - {timestamp}"
     with open(logfile, "a") as file:

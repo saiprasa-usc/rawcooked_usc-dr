@@ -1,15 +1,11 @@
-import asyncio
-import logging
-import subprocess
-import sys
-import threading
-
-from utils.find_utils import find_directories
-from utils.logging_utils import log
 import concurrent.futures
+import logging
+import os
+import subprocess
+
 from dotenv import load_dotenv
 
-import os
+from utils import find_utils, logging_utils
 
 load_dotenv()
 
@@ -86,11 +82,11 @@ class DpxRawcook:
 
         # Write a START note to the logfile if files for encoding, else exit
         if os.path.isfile(self.reversibility_file):
-            log(self.logfile, "============= DPX RAWcook script START =============")
+            logging_utils.log(self.logfile, "============= DPX RAWcook script START =============")
         elif not len(os.listdir(DPX_PATH)):
             print("No files available for encoding, script exiting")
         else:
-            log(self.logfile, "============= DPX RAWcook script START =============")
+            logging_utils.log(self.logfile, "============= DPX RAWcook script START =============")
 
     # ========================
     # === RAWcook pass one ===
@@ -98,7 +94,7 @@ class DpxRawcook:
 
     def pass_one(self):
         # Run first pass where list generated for large reversibility cases by dpx_post_rawcook.sh
-        log(self.logfile, "Checking for files that failed RAWcooked due to large reversibility files")
+        logging_utils.log(self.logfile, "Checking for files that failed RAWcooked due to large reversibility files")
         with open(self.reversibility_file, 'r') as file:
             rev_file_list = file.read().splitlines()
 
@@ -125,12 +121,12 @@ class DpxRawcook:
             cook_retry = list(set(file.read().splitlines()))
             cook_retry.sort()
 
-            log(self.logfile, "DPX folder will be cooked using --output-version 2:")  # TODO Change this dumb logic
+            logging_utils.log(self.logfile, "DPX folder will be cooked using --output-version 2:")  # TODO Change this dumb logic
             if cook_retry and len(cook_retry) > 0:
                 with open(self.retry_file, 'w') as file:
                     file.writelines(item + "\n" for item in cook_retry if cook_retry)
 
-                log(self.logfile, (item + "\n" for item in cook_retry if cook_retry))
+                logging_utils.log(self.logfile, (item + "\n" for item in cook_retry if cook_retry))
 
         with open(f'{MKV_DEST}retry_list.txt') as retry_list:
             for file_name in retry_list:
@@ -154,8 +150,8 @@ class DpxRawcook:
 
         # When large reversibility cooks complete target all N_ folders, and pass any not already being processed to
         # temporary_rawcook_list.txt
-        log(self.logfile, "Outputting files from DPX_PATH to list, if not already queued")
-        folders = find_directories(DPX_PATH, 1)
+        logging_utils.log(self.logfile, "Outputting files from DPX_PATH to list, if not already queued")
+        folders = find_utils.find_directories(DPX_PATH, 1)
         for folder in folders:
 
             name = folder.split('/')[-1]
@@ -183,14 +179,14 @@ class DpxRawcook:
                 if line is not None:
                     cook_list.append(line)
 
-        log(self.logfile, "DPX folder will be cooked:")  # TODO Change this dumb logic
+        logging_utils.log(self.logfile, "DPX folder will be cooked:")  # TODO Change this dumb logic
         if cook_list is not None:
             cook_list.sort()
             cook_list = list(set(cook_list))[0:20]
             with open(self.rawcook_file, 'w') as file:
                 file.write("\n".join(cook_list))
 
-            log(self.logfile, "\n".join(cook_list))
+            logging_utils.log(self.logfile, "\n".join(cook_list))
 
         # Begin RAWcooked processing with GNU Parallel
 
@@ -218,7 +214,7 @@ class DpxRawcook:
 
         # TODO change above command to parallel jobs
 
-        log(self.logfile, "===================== DPX RAWcook ENDED =====================")
+        logging_utils.log(self.logfile, "===================== DPX RAWcook ENDED =====================")
 
     def clean(self):
         # Clean up temporary files
