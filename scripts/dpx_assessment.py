@@ -1,8 +1,6 @@
 import os
-import re
 import shutil
 import sys
-from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -22,14 +20,13 @@ DPX_TO_COOK_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ['DPX_COOK
 class DpxAssessment:
     def __init__(self):
         self.logfile = os.path.join(SCRIPT_LOG, 'dpx_assessment.log')
-        self.rawcooked_dpx_file = os.path.join(DPX_PATH, 'rawcooked_dpx_list.txt')
-        self.luma_4k_dpx_file = os.path.join(DPX_PATH, 'luma_4k_dpx_list.txt')
-        self.tar_dpx_file = os.path.join(DPX_PATH, 'tar_dpx_list.txt')
+        self.rawcooked_dpx_file = os.path.join(DPX_PATH, 'temp_rawcooked_dpx_list.txt')
+        self.tar_dpx_file = os.path.join(DPX_PATH, 'temp_tar_dpx_list.txt')
         self.success_file = os.path.join(DPX_PATH, 'rawcook_dpx_success.log')
         self.failure_file = os.path.join(DPX_PATH, 'tar_dpx_failures.log')
 
         # Refresh temporary success/failure lists
-        self.temp_files = [self.rawcooked_dpx_file, self.tar_dpx_file, self.luma_4k_dpx_file]
+        self.temp_files = [self.rawcooked_dpx_file, self.tar_dpx_file]
 
     def process(self):
         """Initiates the workflow
@@ -42,8 +39,16 @@ class DpxAssessment:
         if not os.listdir(DPX_PATH):  # Make try catch
             print("No files available for encoding, script exiting")
             sys.exit(1)
-        else:
-            logging_utils.log(self.logfile, "============= DPX Assessment workflow START =============")
+
+        if not os.path.exists(self.success_file):
+            with open(self.success_file, 'w+'):
+                pass
+
+        if not os.path.exists(self.failure_file):
+            with open(self.failure_file, 'w+'):
+                pass
+
+        logging_utils.log(self.logfile, "\n============= DPX Assessment workflow START =============\n")
 
         # Creating temporary files from the temp_files list
         for file_name in self.temp_files:
@@ -52,104 +57,68 @@ class DpxAssessment:
             print(f"Created file: {file_name}")
 
     # TODO: Fix depth issue and remove Luma and 4k checks
-    def check_mediaconch_policy(self, depth=3):
-        """Checks if the files in each folder matches the mediaconch policies
+    def check_mediaconch_policy(self):
+        """Checks if a single files in each folder matches the mediaconch policies
 
-        Loop that retrieves single DPX file in each folder, runs Mediaconch check and generates metadata files
-        Configured for three level folders: N_123456_01of01/scan01/dimensions/<dpx_seq>
-        depth should be 3 (Needs to be configurable. Work in progress)
+        Randomly retrieves a single DPX file in each folder, runs mediaconch check and generates metadata files
+
+        Recursively traverse through each sequence folder until the depth at which it finds a .dpx file
+        Stores the root folder path and the path of the randomly chosen .dpx file as key value pairs in dpx_to_check
+        Skips a sequence if the same absolute path is already present in rawcook_dpx_success.log or tar_dpx_failures.log
         """
 
-        # TODO: Remove the Luma and 4k checking
-        dirs = find_utils.find_directories(DPX_PATH, depth)
-        # Checking mediaconch policy for first DPX file in each folder
-        for dir_name in dirs:
-            path = Path(dir_name)
-            dpx = os.listdir(path)[0]
-            # components = dir_name.split('/')
-            dimensions = path.name
-            scans = path.parent.name
-            filename = path.parent.parent.name
-            file_scan_name = os.path.join(filename, scans)
-            queued_pass = find_utils.find_in_logs(DPX_PATH + "rawcook_dpx_success.log", file_scan_name)
-            queued_fail = find_utils.find_in_logs(DPX_PATH + "tar_dpx_failures.log", file_scan_name)
+        dpx_to_check = {}
+        for seq in os.listdir(DPX_PATH):
+            seq_path = os.path.join(DPX_PATH, seq)
+            if os.path.isfile(seq_path) and not seq.endswith('.dpx'):
+                continue
 
-            if not queued_pass and not queued_fail:
-                logging_utils.log(self.logfile, "Metadata file creation has started for:")
-                logging_utils.log(self.logfile, os.path.join(file_scan_name, dimensions, dpx))
-                mediainfo_output_file = os.path.join(DPX_PATH, file_scan_name, f"{filename}_{dpx}_metadata.txt")
-                tree_output_file = os.path.join(DPX_PATH, file_scan_name, f"{filename}_directory_contents.txt")
-                size_output_file = os.path.join(DPX_PATH, file_scan_name, f"{filename}_directory_total_byte_size.txt")
-                shell_utils.get_media_info('-f', os.path.join(dir_name, dpx), mediainfo_output_file)
+            queued_pass = find_utils.find_in_logs(os.path.join(DPX_PATH, "rawcook_dpx_success.log"), seq_path)
+            queued_fail = find_utils.find_in_logs(os.path.join(DPX_PATH, "tar_dpx_failures.log"), seq_path)
 
-                shell_utils.generate_tree(dir_name, '', tree_output_file)  # Check if we need this tree
-                byte_size = os.path.getsize(DPX_PATH + filename)
-                with open(size_output_file, 'a') as file:
-                    file.write(
-                        f"{filename} total folder size in bytes {str(byte_size)}")  # check if we need this wording
-                # Start comparison of first dpx file against mediaconch policy
-                check = shell_utils.check_mediaconch_policy(POLICY_PATH, os.path.join(dir_name, dpx))
-                check_str = check.stdout.decode()
+            if queued_pass or queued_fail:
+                logging_utils.log(self.logfile,
+                                  f"SKIPPING DPX folder: {seq_path}, it has already been processed but has not "
+                                  f"moved to correct processing path:")
+                continue
 
-                if check_str.startswith("pass!"):
-                    media_info = shell_utils.get_media_info('--Details=1', os.path.join(dir_name, dpx))
-                    search_term = "Pixels per line:"
-                    pixel_matches = [line for line in media_info.splitlines() if search_term.lower() in line.lower()]
-                    pixels_per_line = int(re.split(r"\s+", pixel_matches[0])[4])
-                    if pixels_per_line > 3999:
-                        logging_utils.log(self.logfile,
-                                          f"PASS: 4K scan {file_scan_name} has passed the MediaConch policy"
-                                          f" and can progress to RAWcooked processing path")
-                        with open(self.luma_4k_dpx_file, 'a') as file:
-                            file.write(DPX_PATH + filename + "\n")
-                    else:
-                        search_term = "Descriptor"
-                        descriptor_matches = [line for line in media_info.splitlines() if
-                                              search_term.lower() in line.lower()]
-                        luma_match = descriptor_matches[0].find("Luma (Y)")
-                        if luma_match > 0:
-                            logging_utils.log(self.logfile,
-                                              f"PASS: Luma (Y) {file_scan_name} has passed the MediaConch policy"
-                                              f" and can progress to RAWcooked processing path")
-                            with open(self.luma_4k_dpx_file, 'a') as file:
-                                file.write(DPX_PATH + filename + "\n")
-                        else:
-                            logging_utils.log(self.logfile,
-                                              f"PASS: RGB {file_scan_name} has passed the MediaConch policy"
-                                              f"  and can progress to RAWcooked processing path")
-                            with open(self.rawcooked_dpx_file, 'a') as file:
-                                file.write(DPX_PATH + filename + "\n")
+            for dir_path, dir_names, file_names in os.walk(seq_path):
+                if len(file_names) == 0:
+                    continue
+                for file_name in file_names:
+                    if file_name.endswith('.dpx'):
+                        dpx_to_check[seq_path] = os.path.join(dir_path, file_name)
+                        break
 
-                else:
-                    logging_utils.log(self.logfile,
-                                      f"FAIL: {file_scan_name} DOES NOT CONFORM TO MEDIACONCH POLICY. Adding to "
-                                      f"tar_dpx_failures_list.txt")
-                    logging_utils.log(self.logfile, check_str)
-                    with open(self.tar_dpx_file, 'a') as file:
-                        file.write(DPX_PATH + filename + "\n")
-
-
+        for seq in dpx_to_check.keys():
+            dpx = dpx_to_check.get(seq)
+            logging_utils.log(self.logfile, f"Metadata file creation has started for: {dpx}")
+            check = shell_utils.check_mediaconch_policy(POLICY_PATH, dpx)
+            check_str = check.stdout.decode()
+            if check_str.startswith("pass!"):
+                with open(self.rawcooked_dpx_file, 'a') as file:
+                    file.write(f"{seq}\n")
             else:
                 logging_utils.log(self.logfile,
-                                  "SKIPPING DPX folder, it has already been processed but has not moved to correct "
-                                  "processing path:")
-                logging_utils.log(self.logfile, file_scan_name)
+                                  f"FAIL: {dpx} DOES NOT CONFORM TO MEDIACONCH POLICY. Adding to "
+                                  f"tar_dpx_failures_list.txt")
+                logging_utils.log(self.logfile, check_str)
+                with open(self.tar_dpx_file, 'a') as file:
+                    file.write(f"{seq}\n")
 
     def move_passed_files(self):
         """Moves the processed and passed DPX sequences into the dpx_to_cook folder
 
-        Collects all the folder (DPX sequence) names from the temp files
-        (luma_4k_dpx_list.txt, rawcooked_dpx_list.txt and tar_dpx_list.txt).
+        Collects all the folder (DPX sequence) names from the temp_rawcooked_dpx_list.txt
         Then moves them into dpx_to_cook folder
 
         Once all the passed files are moved, the remaining are the files that failed mediaconch policies
         """
+
         dpx_folders_to_move = []
-        txt_files_to_check = [self.rawcooked_dpx_file, self.luma_4k_dpx_file]
-        for txt_file in txt_files_to_check:
-            with open(txt_file, 'r') as file:
-                sorted_paths = file.read().splitlines()
-                dpx_folders_to_move.extend(sorted_paths)
+        with open(self.rawcooked_dpx_file, 'r') as file:
+            sorted_paths = file.read().splitlines()
+            dpx_folders_to_move.extend(sorted_paths)
 
         for file_path in dpx_folders_to_move:
             shutil.move(file_path, DPX_TO_COOK_PATH)
@@ -158,8 +127,6 @@ class DpxAssessment:
         # Append latest pass/failures to movement logs
         with open(self.success_file, 'a') as target:
             with open(self.rawcooked_dpx_file, 'r') as source:
-                target.write(source.read())
-            with open(self.luma_4k_dpx_file, 'r') as source:
                 target.write(source.read())
 
         with open(self.failure_file, 'a') as target:
@@ -185,7 +152,7 @@ class DpxAssessment:
         """Executes the workflow step by step as:
 
         1. process(): Checks if .dpx files are present in the input folder and creates temporary files
-        2. check_mediaconch_policy(depth): Check first .dpx file against mediaconch policies
+        2. check_mediaconch_policy(): Check a randomly chosen .dpx file from each sequence against mediaconch policies
         3. prepare_for_splitting(): Prepare files for splitting
         4. split(): Splits the files
         5. log_success_failure(): Logs the success or failure status
@@ -195,7 +162,7 @@ class DpxAssessment:
         # TODO: Implement error handling mechanisms
         self.process()
         # TODO: Fix depth issue
-        self.check_mediaconch_policy(3)  # Takes dept as argument. BROKEN
+        self.check_mediaconch_policy()
 
         self.move_passed_files()
         self.log_success_failure()
