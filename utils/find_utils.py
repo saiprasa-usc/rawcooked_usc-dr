@@ -17,11 +17,11 @@ def find_directories(folder_name, target_depth):
     @param target_depth: The directory level depth till which the search will go
     @return: A list of folders that are present in the leaf level
     """
+
     folders_at_depth = []
 
     for root, dirs, files in os.walk(folder_name):
-        current_depth = root[len(folder_name) + len(os.sep):].count(os.sep)
-
+        current_depth = root[len(folder_name) + len(os.path.sep):].count(os.path.sep)
         if current_depth == target_depth - 1:
             folders_at_depth.append(root)
 
@@ -35,6 +35,7 @@ def find_in_logs(file_path, search_text):
     @param search_text: The search keyword
     @return: Boolean True if found else False
     """
+
     with open(file_path, 'r') as file:
         for line in file:
             if search_text in line:

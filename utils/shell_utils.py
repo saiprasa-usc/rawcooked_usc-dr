@@ -13,6 +13,7 @@ def get_media_info(flags, filename, output_file=None):
     @param output_file: The file where the output of the mediainfo will get stored
     @return: The decoded output of the mediainfo execution
     """
+
     command = ['mediainfo', flags, filename]
     media_info_check = subprocess.run(command, capture_output=True)
     print(" ".join(media_info_check.args))
@@ -30,6 +31,7 @@ def generate_tree(directory_path, indent='', output_file=None):
     @param indent: Indentation character
     @param output_file: Name of the output file
     """
+
     if not output_file:
         output_file = open(directory_path + '_directory_contents.txt', 'w')
     else:
@@ -54,8 +56,10 @@ def check_mediaconch_policy(policy_path, filename):
     @param filename: The DPX file path which is verified against the policies
     @return: The output of the mediconch command
     """
+
     command = ['mediaconch', '--force', '-p', policy_path, filename]
     check = subprocess.run(command, capture_output=True)
+
     return check
 
 
