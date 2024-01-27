@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 import sys
 
 from dotenv import load_dotenv
@@ -15,20 +16,24 @@ PY3_LAUNCH = os.environ.get('PY3_ENV')
 SPLITTING = os.environ.get('SPLITTING_SCRIPT_FILMOPS')
 POLICY_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('POLICY_DPX'))
 DPX_TO_COOK_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ['DPX_COOK'])
+DPX_FOR_REVIEW_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ['DPX_REVIEW'])
 
 
 class DpxAssessment:
     def __init__(self):
         self.logfile = os.path.join(SCRIPT_LOG, 'dpx_assessment.log')
-        self.rawcooked_dpx_file = os.path.join(DPX_PATH, 'temp_rawcooked_dpx_list.txt')
-        self.tar_dpx_file = os.path.join(DPX_PATH, 'temp_tar_dpx_list.txt')
         self.success_file = os.path.join(DPX_PATH, 'rawcook_dpx_success.log')
         self.failure_file = os.path.join(DPX_PATH, 'tar_dpx_failures.log')
+        self.review_file = os.path.join(DPX_PATH, 'review_dpx_failures.log')
+
+        self.temp_rawcooked_dpx_file = os.path.join(DPX_PATH, 'temp_rawcooked_dpx_list.txt')
+        self.temp_tar_dpx_file = os.path.join(DPX_PATH, 'temp_tar_dpx_list.txt')
+        self.temp_review_dpx_file = os.path.join(DPX_PATH, 'temp_review_dpx.txt')
 
         # Refresh temporary success/failure lists
-        self.temp_files = [self.rawcooked_dpx_file, self.tar_dpx_file]
+        self.temp_files = [self.temp_rawcooked_dpx_file, self.temp_tar_dpx_file, self.temp_review_dpx_file]
 
-    def process(self):
+    def process(self) -> None:
         """Initiates the workflow
 
         Checks if DPX sequences are present in the DXP_PATH and creates the temporary files needed for the workflow.
@@ -48,35 +53,36 @@ class DpxAssessment:
             with open(self.failure_file, 'w+'):
                 pass
 
+        if not os.path.exists(self.review_file):
+            with open(self.review_file, 'w+'):
+                pass
+
         logging_utils.log(self.logfile, "\n============= DPX Assessment workflow START =============\n")
 
         # Creating temporary files from the temp_files list
         for file_name in self.temp_files:
-            with open(file_name, 'w') as f:
+            with open(file_name, 'w+'):
                 pass
             print(f"Created file: {file_name}")
 
-    # TODO: Fix depth issue and remove Luma and 4k checks
-    def check_mediaconch_policy(self):
-        """Checks if a single files in each folder matches the mediaconch policies
-
-        Randomly retrieves a single DPX file in each folder, runs mediaconch check and generates metadata files
+    def find_dpx_to_check(self) -> dict:
+        """Randomly retrieves a DPX file in each folder and creates a dictionary with <root_folder, dpx_file> pairs
 
         Recursively traverse through each sequence folder until the depth at which it finds a .dpx file
         Stores the root folder path and the path of the randomly chosen .dpx file as key value pairs in dpx_to_check
         Skips a sequence if the same absolute path is already present in rawcook_dpx_success.log or tar_dpx_failures.log
         """
-
         dpx_to_check = {}
         for seq in os.listdir(DPX_PATH):
             seq_path = os.path.join(DPX_PATH, seq)
             if os.path.isfile(seq_path) and not seq.endswith('.dpx'):
                 continue
 
-            queued_pass = find_utils.find_in_logs(os.path.join(DPX_PATH, "rawcook_dpx_success.log"), seq_path)
-            queued_fail = find_utils.find_in_logs(os.path.join(DPX_PATH, "tar_dpx_failures.log"), seq_path)
+            queued_pass = find_utils.find_in_logs(self.success_file, seq_path)
+            queued_fail = find_utils.find_in_logs(self.failure_file, seq_path)
+            queued_review = find_utils.find_in_logs(self.review_file, seq_path)
 
-            if queued_pass or queued_fail:
+            if queued_pass or queued_fail or queued_review:
                 logging_utils.log(self.logfile,
                                   f"SKIPPING DPX folder: {seq_path}, it has already been processed but has not "
                                   f"moved to correct processing path:")
@@ -90,23 +96,62 @@ class DpxAssessment:
                         dpx_to_check[seq_path] = os.path.join(dir_path, file_name)
                         break
 
+        return dpx_to_check
+
+    def check_gaps(self, dpx_to_check: dict) -> list:
+        """Executes Rawcooked to check if there is a missing .dpx in a sequence
+
+        The incoherent sequences are removed from the dictionary as we do not need to execute mediaconch over them
+        Returns a list of the incoherent sequences for separating them later
+        """
+        sequences_to_review = []
+        for seq in dpx_to_check.keys():
+            command = ['rawcooked', '--check', '--no-encode', seq]
+            p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            # Note: By observation, output of Rawcooked is captured in stderr not in stdout
+            out, err = p.communicate()
+            if err.find('Warning: incoherent file names') != -1:
+                logging_utils.log(self.logfile,
+                                  f"FAIL: {seq} CONTAINS INCOHERENT SEQUENCES. Adding to "
+                                  f"temp_review_dpx_list.txt")
+                with open(self.temp_review_dpx_file, 'a') as file:
+                    file.write(f"{seq}\n")
+                sequences_to_review.append(seq)
+
+        # We don't need to run mediaconch over these sequences so remove the entries
+        for seq in sequences_to_review:
+            dpx_to_check.pop(seq)
+
+        return sequences_to_review
+
+    def check_mediaconch_policy(self, dpx_to_check: dict) -> None:
+        """Checks if the dpx files passed as parameters matches mediaconch policies
+        """
+
         for seq in dpx_to_check.keys():
             dpx = dpx_to_check.get(seq)
             logging_utils.log(self.logfile, f"Metadata file creation has started for: {dpx}")
             check = shell_utils.check_mediaconch_policy(POLICY_PATH, dpx)
             check_str = check.stdout.decode()
             if check_str.startswith("pass!"):
-                with open(self.rawcooked_dpx_file, 'a') as file:
+                with open(self.temp_rawcooked_dpx_file, 'a') as file:
                     file.write(f"{seq}\n")
             else:
                 logging_utils.log(self.logfile,
                                   f"FAIL: {dpx} DOES NOT CONFORM TO MEDIACONCH POLICY. Adding to "
                                   f"tar_dpx_failures_list.txt")
                 logging_utils.log(self.logfile, check_str)
-                with open(self.tar_dpx_file, 'a') as file:
+                with open(self.temp_tar_dpx_file, 'a') as file:
                     file.write(f"{seq}\n")
 
-    def move_passed_files(self):
+    def move_review_sequences(self, sequences_to_review: list) -> None:
+        """Moves the sequences passed as parameter to the dpx_for_review folder
+        """
+
+        for seq in sequences_to_review:
+            shutil.move(seq, DPX_FOR_REVIEW_PATH)
+
+    def move_passed_sequences(self) -> None:
         """Moves the processed and passed DPX sequences into the dpx_to_cook folder
 
         Collects all the folder (DPX sequence) names from the temp_rawcooked_dpx_list.txt
@@ -116,24 +161,30 @@ class DpxAssessment:
         """
 
         dpx_folders_to_move = []
-        with open(self.rawcooked_dpx_file, 'r') as file:
+        with open(self.temp_rawcooked_dpx_file, 'r') as file:
             sorted_paths = file.read().splitlines()
             dpx_folders_to_move.extend(sorted_paths)
 
         for file_path in dpx_folders_to_move:
             shutil.move(file_path, DPX_TO_COOK_PATH)
 
-    def log_success_failure(self):
-        # Append latest pass/failures to movement logs
+    def log_success_failure(self) -> None:
+        """Takes the value from the temporary files and stores them into the respective .log files
+        """
+
         with open(self.success_file, 'a') as target:
-            with open(self.rawcooked_dpx_file, 'r') as source:
+            with open(self.temp_rawcooked_dpx_file, 'r') as source:
                 target.write(source.read())
 
         with open(self.failure_file, 'a') as target:
-            with open(self.tar_dpx_file, 'r') as source:
+            with open(self.temp_tar_dpx_file, 'r') as source:
                 target.write(source.read())
 
-    def clean(self):
+        with open(self.review_file, 'a') as target:
+            with open(self.temp_review_dpx_file, 'r') as source:
+                target.write(source.read())
+
+    def clean(self) -> None:
         """Concludes the workflow
 
         Moves the already processed folder containing all the DXP sequences from dpx_to_assess to dpx_to_cook
@@ -148,23 +199,28 @@ class DpxAssessment:
             else:
                 print(f"File not found: {file_name}")
 
-    def execute(self):
+    def execute(self) -> None:
         """Executes the workflow step by step as:
 
         1. process(): Checks if .dpx files are present in the input folder and creates temporary files
-        2. check_mediaconch_policy(): Check a randomly chosen .dpx file from each sequence against mediaconch policies
-        3. prepare_for_splitting(): Prepare files for splitting
-        4. split(): Splits the files
-        5. log_success_failure(): Logs the success or failure status
-        6. clean(): Cleans up the temporary files
+        2. find_dpx_to_check(): Finds the dpx files at any depth and returns a dict with <root_path, file_path> pairs
+        3. check_gaps(): It takes the dict and runs rawcooked to check if there is an incoherent sequence.
+                         Removes the sequence from the dict
+        4. check_mediaconch_policy(): Check a randomly chosen .dpx file from each sequence against mediaconch policies
+        5. move_review_sequences(): Takes the list of incoherent sequences and move them to dpx_for_review folder
+        6. log_success_failure(): Logs the success or failure status
+        7. clean(): Cleans up the temporary files
         """
 
         # TODO: Implement error handling mechanisms
         self.process()
-        # TODO: Fix depth issue
-        self.check_mediaconch_policy()
 
-        self.move_passed_files()
+        dpx_to_check = self.find_dpx_to_check()
+        sequences_to_review = self.check_gaps(dpx_to_check)
+        self.check_mediaconch_policy(dpx_to_check)
+        if len(sequences_to_review) > 0:
+            self.move_review_sequences(sequences_to_review)
+        self.move_passed_sequences()
         self.log_success_failure()
         self.clean()
 
