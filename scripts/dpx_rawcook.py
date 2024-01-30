@@ -28,7 +28,7 @@ def process_mkv(file_name: str, md5_checksum: bool = False):
     # f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum
     # else ''} {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt"
     file_name = file_name.rstrip()
-    string_command = f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum else ''} {DPX_PATH}{file_name} -o {MKV_DEST}mkv_cooked/{file_name}.mkv"
+    string_command = f"rawcooked --license 004B159A2BDB07331B8F2FDF4B2F -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum else ''} {DPX_PATH}{file_name} -o {MKV_DEST}mkv_cooked/{file_name}.mkv"
     output_file_name = f"{MKV_DEST}mkv_cooked/{file_name}.mkv.txt"
     command = string_command.split(" ")
     command = [c for c in command if len(c) > 0]
@@ -39,7 +39,7 @@ def process_mkv(file_name: str, md5_checksum: bool = False):
 
 
 def process_mkv_output_v2(line):
-    code = f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps --output-version 2 -s 5281680 {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt"
+    code = f"rawcooked --license 004B159A2BDB07331B8F2FDF4B2F -y --all --no-accept-gaps --output-version 2 -s 5281680 {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt"
     p = subprocess.run(code, shell=True, check=True, stderr=subprocess.PIPE)
     return "CODE", p.returncode, p.stderr
 
@@ -89,6 +89,7 @@ class DpxRawcook:
     # === RAWcook pass one ===
     # ========================
 
+    # Cooks with output v2
     def pass_one(self):
         # Run first pass where list generated for large reversibility cases by dpx_post_rawcook.sh
         logging_utils.log(self.logfile, "Checking for files that failed RAWcooked due to large reversibility files")
@@ -139,6 +140,7 @@ class DpxRawcook:
     # === RAWcook pass two ===
     # ========================
 
+    # Cooks with output v1
     def pass_two(self):
         # Refresh temporary queued list
         temp_queued_list = os.listdir(self.cooked_folder)
