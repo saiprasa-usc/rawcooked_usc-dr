@@ -11,7 +11,7 @@ def log(logfile, message):
     """
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d - %H:%M:%S")
-    log_message = f"{message} - {timestamp}"
+    log_message = f"{timestamp} - {message}"
     with open(logfile, "a") as file:
         file.write(log_message + "\n")
     print(log_message)

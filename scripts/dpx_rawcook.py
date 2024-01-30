@@ -1,5 +1,4 @@
 import concurrent.futures
-import logging
 import os
 import subprocess
 
@@ -22,26 +21,17 @@ SCRIPT_LOG = r'{}'.format(SCRIPT_LOG)
 DPX_PATH = r'{}'.format(DPX_PATH)
 MKV_DEST = r'{}'.format(MKV_DEST)
 
-logger = logging.getLogger(__name__)
-
-
-# logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s", datefmt="[%X]")
-
-
-# def log_info(program: str, line: str, filename: str):
-#
-#
-#     logger.info("%s : %s", program, line.rstrip())
 
 # It will not create the .mkv.txt file as Popen() will dump the output in realtime to the console
 def process_mkv(file_name: str, md5_checksum: bool = False):
-    # By observation, any rawcooked failed will result return code 0 but message is captured in stderr
-    # code = f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum else ''} {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt"
+    # By observation, any rawcooked failed will result return code 0 but message is captured in stderr code =
+    # f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum
+    # else ''} {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt"
     file_name = file_name.rstrip()
     string_command = f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum else ''} {DPX_PATH}{file_name} -o {MKV_DEST}mkv_cooked/{file_name}.mkv"
     output_file_name = f"{MKV_DEST}mkv_cooked/{file_name}.mkv.txt"
     command = string_command.split(" ")
-    command = filter(lambda x: len(x) > 0, command)
+    command = [c for c in command if len(c) > 0]
     command = list(command)
     print(command)
     with subprocess.Popen(command, text=True) as proc:
@@ -69,6 +59,11 @@ class DpxRawcook:
         self.file_names = [self.temp_rawcooked_file, self.temp_retry_file, self.retry_file, self.rawcook_file]
 
     def process(self):
+
+        if not os.path.exists(self.logfile):
+            with open(self.logfile, 'w+'):
+                pass
+
         # Reading files from mkv_cooked folder and writing it to temp_queued_list
         with open(self.queued_file, 'w') as file:
             file.write("\n".join(os.listdir(self.cooked_folder)))
@@ -157,7 +152,6 @@ class DpxRawcook:
         folders = [f for f in folders if f != DPX_PATH]
         print("FOLDERS:", folders)
         for folder in folders:
-
             name = folder.split('/')[-1]
             if name is not None:
                 folder_clean = os.path.basename(folder)
