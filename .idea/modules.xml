@@ -2,11 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-<<<<<<< HEAD
       <module fileurl="file://$PROJECT_DIR$/.idea/rawcooked_usc-dr.iml" filepath="$PROJECT_DIR$/.idea/rawcooked_usc-dr.iml" />
-=======
-      <module fileurl="file://$PROJECT_DIR$/.idea/rawcooked-usc-dr.iml" filepath="$PROJECT_DIR$/.idea/rawcooked-usc-dr.iml" />
->>>>>>> 46478dcb5553a2f1de30f312ab1937d6252a45b8
     </modules>
   </component>
 </project>
