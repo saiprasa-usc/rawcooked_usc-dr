@@ -29,18 +29,20 @@ DPX_FOR_REVIEW_PATH = r'{}'.format(DPX_FOR_REVIEW_PATH)
 
 class DpxAssessment:
     def __init__(self):
+        # Log files
         self.logfile = os.path.join(SCRIPT_LOG, 'dpx_assessment.log')
         self.success_file = os.path.join(DPX_PATH, 'rawcook_dpx_success.log')
         self.failure_file = os.path.join(DPX_PATH, 'tar_dpx_failures.log')
         self.review_file = os.path.join(DPX_PATH, 'review_dpx_failures.log')
         self.rawcooked_v2_file = os.path.join(DPX_PATH, 'rawcook_dpx_v2.log')
 
+        # Temporary .txt files
         self.temp_rawcooked_dpx_file = os.path.join(DPX_PATH, 'temp_rawcooked_dpx_list.txt')
         self.temp_rawcooked_v2_dpx_file = os.path.join(DPX_PATH, 'temp_rawcooked_v2_dpx_list.txt')
         self.temp_tar_dpx_file = os.path.join(DPX_PATH, 'temp_tar_dpx_list.txt')
         self.temp_review_dpx_file = os.path.join(DPX_PATH, 'temp_review_dpx.txt')
 
-        # Refresh temporary success/failure lists
+        # List of the above temp files needed for creation and deletion
         self.temp_files = [
             self.temp_rawcooked_dpx_file, self.temp_rawcooked_v2_dpx_file,
             self.temp_tar_dpx_file, self.temp_review_dpx_file
@@ -95,6 +97,7 @@ class DpxAssessment:
             if os.path.isfile(seq_path) and not seq.endswith('.dpx'):
                 continue
 
+            # checks in the logs if the sequence has already been processed
             queued_pass = find_utils.find_in_logs(self.success_file, seq_path)
             queued_fail = find_utils.find_in_logs(self.failure_file, seq_path)
             queued_review = find_utils.find_in_logs(self.review_file, seq_path)
@@ -127,25 +130,27 @@ class DpxAssessment:
         sequences_to_review = []
         sequences_to_v2 = []
         for seq in dpx_to_check.keys():
+            # Rawcooked should take a folder as input which contains only .dpx files and no other metadata file
+            # The value of dpx_to_check dict is the path to a .dpx file which implies that the parent of this path is
+            # The root dpx folder that rawcooked should take as input
             root_dpx_folder = Path(dpx_to_check.get(seq)).parent
-            print(root_dpx_folder)
             command = ['rawcooked', '--check', '--no-encode', root_dpx_folder]
             logging_utils.log(self.logfile,
                               f"Checking for incoherent sequences and large reversibility file issue in {seq}")
 
             subprocess_logs = []
-
             # Note: By observation, output of Rawcooked is captured in stderr not in stdout
             with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as p:
                 for line in p.stderr:
                     subprocess_logs.append(line)
-                    print('ERR:', line)
+                    print(line)
                 for line in p.stdout:
                     subprocess_logs.append(line)
-                    print('OUT:', line)
+                    print(line)
 
             std_logs = ''.join(subprocess_logs)
-            print(std_logs)
+
+            # Checks for incoherent sequences
             if std_logs.find('Warning: incoherent file names') != -1:
                 logging_utils.log(self.logfile,
                                   f"FAIL: {seq} CONTAINS INCOHERENT SEQUENCES. Adding to "
@@ -167,7 +172,6 @@ class DpxAssessment:
         # We don't need to run mediaconch over these sequences so remove the entries
         for seq in sequences_to_review:
             dpx_to_check.pop(seq)
-
         for seq in sequences_to_v2:
             dpx_to_check.pop(seq)
 
@@ -201,6 +205,11 @@ class DpxAssessment:
             shutil.move(seq, DPX_FOR_REVIEW_PATH)
 
     def move_v2_sequences(self) -> None:
+        """Moves the failed filed due to large reversibility file into dpx_to_cook_v2 folder
+
+        Collects all the sequences from the temp_rawcook_v2_dpx_list.txt then moves them into dpx_to_cook_v2 folder
+        """
+
         dpx_folders_to_move = []
         with open(self.temp_rawcooked_v2_dpx_file, 'r') as file:
             sorted_paths = file.read().splitlines()
@@ -242,11 +251,12 @@ class DpxAssessment:
             with open(self.temp_review_dpx_file, 'r') as source:
                 target.write(source.read())
 
-    def clean(self) -> None:
-        """Concludes the workflow
+        with open(self.rawcooked_v2_file, 'a') as target:
+            with open(self.temp_rawcooked_v2_dpx_file, 'r') as source:
+                target.write(source.read())
 
-        Moves the already processed folder containing all the DXP sequences from dpx_to_assess to dpx_to_cook
-        and also deletes the temporary files created during the workflow
+    def clean(self) -> None:
+        """Concludes the workflow by removing the temporary .txt files
         """
 
         # Clean up temporary files
@@ -265,9 +275,11 @@ class DpxAssessment:
         3. check_gaps(): It takes the dict and runs rawcooked to check if there is an incoherent sequence.
                          Removes the sequence from the dict
         4. check_mediaconch_policy(): Check a randomly chosen .dpx file from each sequence against mediaconch policies
-        5. move_review_sequences(): Takes the list of incoherent sequences and move them to dpx_for_review folder
-        6. log_success_failure(): Logs the success or failure status
-        7. clean(): Cleans up the temporary files
+        5. move_review_sequences(): Takes the list of incoherent sequences and moves them to dpx_for_review folder
+        6. move_v2_sequences(): Takes the list of large reversibility file sequences and moves them to dpx_to_cook_v2
+        7. move_passed_sequences(): Takes the list of all the passed sequences and moves them to dpx_to_cook folder
+        8. log_success_failure(): Logs the success or failure status
+        9. clean(): Cleans up the temporary files
         """
 
         # TODO: Implement error handling mechanisms
