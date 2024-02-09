@@ -21,7 +21,8 @@ DPX_DEST = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('DPX_COMPLETE
 MKV_DESTINATION = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('MKV_ENCODED'))
 CHECK_FOLDER = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('MKV_CHECK'))
 MKV_POLICY = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('POLICY_RAWCOOK'))
-SCRIPT_LOG = os.path.join(os.environ.get('FILM_OPS') + os.environ.get('DPX_SCRIPT_LOG'))
+SCRIPT_LOG = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('DPX_SCRIPT_LOG'))
+REVIEW_FAILS_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('DPX_REVIEW'), 'PostRawcookFails/')
 
 logfile = os.path.join(SCRIPT_LOG, "dpx_post_rawcook.log")
 date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -59,48 +60,45 @@ class DpxPostRawcook:
         # ==========================================================================
         # Matroska checks using MediaConch policy, remove fails to Killed folder ===
         # ==========================================================================
-        with os.scandir(os.path.join(MKV_DESTINATION, "mkv_cooked/")) as entries:
+        cooked_directory_path = os.path.join(MKV_DESTINATION, "mkv_cooked/")
+        with os.scandir(cooked_directory_path) as entries:
             for entry in entries:
                 filename = entry.name
-                fname_log = filename.split('.')[0]
                 if filename.endswith(".mkv"):
-                    check = check_mediaconch_policy(MKV_POLICY, filename)
-                    check_str = check.stdout.decode()
-                    if ".mkv.r" in check_str:  # check_str.startswith('pass!'):
+                    file_path = os.path.join(MKV_DESTINATION, "mkv_cooked/", filename)
+                    print(file_path)
+                    mediaconch_output = check_mediaconch_policy(MKV_POLICY, file_path)
+                    standard_output = mediaconch_output.stdout.decode()
+                    if "hgdkhdk" in standard_output:  # check_str.startswith('pass!'):
                         log(logfile,
-                            "PASS: RAWcooked MKV file " + filename + " has passed the Mediaconch policy. Whoopee")
+                            f"PASS: RAWcooked MKV file {filename} has passed the Mediaconch policy")
                     else:
-                        log(logfile, "FAIL: RAWcooked MKV " + filename + " has failed the mediaconch policy")
-                        log(logfile,
-                            "Moving " + filename + " to killed directory, and amending log fail_" + filename + ".txt")
-                        log(logfile, check)
-                        with open(ERRORS + fname_log + "_errors.log", 'a+') as file:
-                            file.write(
-                                "post_rawcooked" + date + "): Matroska " + filename + "failed the FFV1 MKV Mediaconch "
-                                                                                      "policy.")
-                            file.write(
-                                "    Matroska moved to Killed folder, DPX sequence will retry RAWcooked encoding.")
-                            file.write(
-                                "Please contact the Knowledge and Collections Developer about this Mediaconch policy "
-                                "failure.")
+                        log(logfile, f"FAIL: RAWcooked MKV {filename} has failed the mediaconch policy")
+                        log(logfile, f"MEDIACONCH_FAILED_RESULT: {mediaconch_output}")
                         with open(self.temp_medicaconch_policy_fails_file, "a+") as file:
-                            file.write(filename)
+                            file.write(f"{file_path}\n")
 
-        # Move failed MKV files to killed folder
-        failed_mkv_file_list = []
-        failed_txt_file_list = []
+        # # Move failed MKV files to killed folder
+        # failed_mkv_file_list = []
+        # failed_txt_file_list = []
+        # with open(self.temp_medicaconch_policy_fails_file, 'r') as file:
+        #     for line in file:
+        #         if line.endswith(".mkv"):
+        #             failed_mkv_file_list.append(line)
+        #         elif line.endswith(".txt"):
+        #             failed_txt_file_list.append(line)
+        # move_files_parallel(os.path.join(MKV_DESTINATION, 'mkv_cooked/'), os.path.join(MKV_DESTINATION, 'killed/'),
+        #                     failed_mkv_file_list, 10)  # TODO rename mkv_cooked to a vairable
+        # # Move the txt files to logs folder and prepend -fail- to filename
+        #
+        # move_files_parallel(os.path.join(MKV_DESTINATION, 'mkv_cooked/'), os.path.join(MKV_DESTINATION, 'logs/'),
+        #                     failed_txt_file_list, 10)  # TODO prepend fail_
+
+    def move_failed_files(self):
         with open(self.temp_medicaconch_policy_fails_file, 'r') as file:
-            for line in file:
-                if line.endswith(".mkv"):
-                    failed_mkv_file_list.append(line)
-                elif line.endswith(".txt"):
-                    failed_txt_file_list.append(line)
-        move_files_parallel(os.path.join(MKV_DESTINATION, 'mkv_cooked/'), os.path.join(MKV_DESTINATION, 'killed/'),
-                            failed_mkv_file_list, 10)  # TODO rename mkv_cooked to a vairable
-        # Move the txt files to logs folder and prepend -fail- to filename
-
-        move_files_parallel(os.path.join(MKV_DESTINATION, 'mkv_cooked/'), os.path.join(MKV_DESTINATION, 'logs/'),
-                            failed_txt_file_list, 10)  # TODO prepend fail_
+            review_path = os.path.join('')
+            for mkv_path in file:
+                shutil.move(mkv_path, REVIEW_FAILS_PATH)
 
     def move_success_files(self):
         # ===================================================================================
@@ -348,7 +346,7 @@ class DpxPostRawcook:
         self.check_general_errors()
         self.killed_process_workflow()
         self.update_success_count()
-        self.clean()
+        # self.clean()
 
 
 if __name__ == '__main__':
