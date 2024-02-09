@@ -63,8 +63,7 @@ class DpxPostRawcook:
             for entry in entries:
                 filename = entry.name
                 fname_log = filename.split('.')[0]
-                if filename.endswith(".mkv") or filename.endswith(
-                        ".rawcooked_reversibility_data"):  # TODO check this file name ending. Should be .mkv only
+                if filename.endswith(".mkv"):
                     check = check_mediaconch_policy(MKV_POLICY, filename)
                     check_str = check.stdout.decode()
                     if ".mkv.r" in check_str:  # check_str.startswith('pass!'):
