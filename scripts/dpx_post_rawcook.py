@@ -1,5 +1,5 @@
 import shutil
-import subprocess
+
 from datetime import datetime
 
 from utils.logging_utils import log
@@ -22,7 +22,8 @@ MKV_DESTINATION = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('MKV_E
 CHECK_FOLDER = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('MKV_CHECK'))
 MKV_POLICY = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('POLICY_RAWCOOK'))
 SCRIPT_LOG = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('DPX_SCRIPT_LOG'))
-REVIEW_FAILS_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('DPX_REVIEW'), 'PostRawcookFails/')
+REVIEW_FAILS_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('DPX_REVIEW'), 'post_rawcook_fails/')
+MKV_COOKED_PATH = os.path.join(MKV_DESTINATION, 'mkv_cooked/')
 
 logfile = os.path.join(SCRIPT_LOG, "dpx_post_rawcook.log")
 date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -60,45 +61,38 @@ class DpxPostRawcook:
         # ==========================================================================
         # Matroska checks using MediaConch policy, remove fails to Killed folder ===
         # ==========================================================================
-        cooked_directory_path = os.path.join(MKV_DESTINATION, "mkv_cooked/")
-        with os.scandir(cooked_directory_path) as entries:
+        with os.scandir(MKV_COOKED_PATH) as entries:
             for entry in entries:
-                filename = entry.name
-                if filename.endswith(".mkv"):
-                    file_path = os.path.join(MKV_DESTINATION, "mkv_cooked/", filename)
-                    print(file_path)
+                file_name = entry.name
+
+                if file_name.endswith(".mkv"):
+                    file_path = os.path.join(MKV_COOKED_PATH, file_name)
                     mediaconch_output = check_mediaconch_policy(MKV_POLICY, file_path)
                     standard_output = mediaconch_output.stdout.decode()
-                    if "hgdkhdk" in standard_output:  # check_str.startswith('pass!'):
+                    if "pass!" in standard_output:  # check_str.startswith('pass!'):
                         log(logfile,
-                            f"PASS: RAWcooked MKV file {filename} has passed the Mediaconch policy")
+                            f"PASS: RAWcooked MKV file {file_name} has passed the Mediaconch policy")
                     else:
-                        log(logfile, f"FAIL: RAWcooked MKV {filename} has failed the mediaconch policy")
+                        log(logfile, f"FAIL: RAWcooked MKV {file_name} has failed the mediaconch policy")
                         log(logfile, f"MEDIACONCH_FAILED_RESULT: {mediaconch_output}")
+
+                        # Write both the failed mkv file along with the corresponding txt file
                         with open(self.temp_medicaconch_policy_fails_file, "a+") as file:
+                            txt_file_name = f"{file_name}.txt"
+                            txt_file_path = os.path.join(MKV_COOKED_PATH, txt_file_name)
                             file.write(f"{file_path}\n")
+                            file.write(f"{txt_file_path}\n")
 
-        # # Move failed MKV files to killed folder
-        # failed_mkv_file_list = []
-        # failed_txt_file_list = []
-        # with open(self.temp_medicaconch_policy_fails_file, 'r') as file:
-        #     for line in file:
-        #         if line.endswith(".mkv"):
-        #             failed_mkv_file_list.append(line)
-        #         elif line.endswith(".txt"):
-        #             failed_txt_file_list.append(line)
-        # move_files_parallel(os.path.join(MKV_DESTINATION, 'mkv_cooked/'), os.path.join(MKV_DESTINATION, 'killed/'),
-        #                     failed_mkv_file_list, 10)  # TODO rename mkv_cooked to a vairable
-        # # Move the txt files to logs folder and prepend -fail- to filename
-        #
-        # move_files_parallel(os.path.join(MKV_DESTINATION, 'mkv_cooked/'), os.path.join(MKV_DESTINATION, 'logs/'),
-        #                     failed_txt_file_list, 10)  # TODO prepend fail_
-
+    # Moves the failed mkv file and its corresponding txt file into dpx_for_review/post_rawcook_fails
     def move_failed_files(self):
         with open(self.temp_medicaconch_policy_fails_file, 'r') as file:
-            review_path = os.path.join('')
-            for mkv_path in file:
-                shutil.move(mkv_path, REVIEW_FAILS_PATH)
+            for file_path in file:
+                file_path = file_path.strip()
+                if file_path.endswith(".mkv"):
+                    print(file_path)
+                    shutil.move(file_path, os.path.join(REVIEW_FAILS_PATH, 'mkv_files/'))
+                elif file_path.endswith(".txt"):
+                    shutil.move(file_path, os.path.join(REVIEW_FAILS_PATH, 'rawcook_output_logs/'))
 
     def move_success_files(self):
         # ===================================================================================
@@ -337,16 +331,15 @@ class DpxPostRawcook:
 
         shutil.move(MKV_DESTINATION + "temp_rawcooked_success_unique.log", MKV_DESTINATION + "rawcooked_success.log")
 
-
     def execute(self):
         self.process()
         self.check_mediaconch_policies()
-        self.move_success_files()
-        self.check_big_reversibility_file()
-        self.check_general_errors()
-        self.killed_process_workflow()
-        self.update_success_count()
-        # self.clean()
+        # self.move_success_files()
+        # self.check_big_reversibility_file()
+        # self.check_general_errors()
+        # self.killed_process_workflow()
+        # self.update_success_count()
+        self.clean()
 
 
 if __name__ == '__main__':
