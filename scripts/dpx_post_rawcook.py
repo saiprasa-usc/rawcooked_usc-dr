@@ -1,5 +1,5 @@
 import shutil
-
+import mmap
 from datetime import datetime
 
 from utils.logging_utils import log
@@ -59,14 +59,13 @@ class DpxPostRawcook:
 
     def check_mediaconch_policies(self):
         # ==========================================================================
-        # Matroska checks using MediaConch policy, remove fails to Killed folder ===
+        # Matroska checks using MediaConch policy
         # ==========================================================================
         with os.scandir(MKV_COOKED_PATH) as entries:
             for entry in entries:
                 file_name = entry.name
-
                 if file_name.endswith(".mkv"):
-                    file_path = os.path.join(MKV_COOKED_PATH, file_name)
+                    file_path = entry.path
                     mediaconch_output = check_mediaconch_policy(MKV_POLICY, file_path)
                     standard_output = mediaconch_output.stdout.decode()
                     if "pass!" in standard_output:  # check_str.startswith('pass!'):
@@ -94,173 +93,90 @@ class DpxPostRawcook:
                 elif file_path.endswith(".txt"):
                     shutil.move(file_path, os.path.join(REVIEW_FAILS_PATH, 'rawcook_output_logs/'))
 
-    def move_success_files(self):
-        # ===================================================================================
-        # Log check passes move to MKV Check folder and logs folders, and DPX folder move ===
-        # ===================================================================================
-        with os.scandir(MKV_DESTINATION + "mkv_cooked/") as entries:
-            for entry in entries:
-                filename = entry.name
-                if filename.endswith("mkv.txt"):
-                    with open(MKV_DESTINATION + "mkv_cooked/" + filename, 'r') as file:
-                        for line in file:
-                            if line.find('Reversibility was checked, no issue detected.') != -1:
-                                mkv_filename = filename.split('.')[0] + '.mkv'
-                                dpx_success_path = entry.path
-                                log(logfile,
-                                    "COMPLETED: RAWcooked MKV " + mkv_filename + "has completed successfully and will "
-                                                                                 "be moved to check folder")
-                                with open(MKV_DESTINATION + "rawcooked_success.log", "a") as f:
-                                    f.write(dpx_success_path)
-                                with open(self.successfull_mkv_list_file, "a") as f:
-                                    f.write(mkv_filename)
-                            else:
-                                log(logfile,
-                                    "SKIP: Matroska " + mkv_filename + " has not completed, or has errors detected")
-
-        # Move successfully encoded MKV files to check folder
-        successful_mkv_list = []
-        successful_mkv_txt_list = []
-        with open(self.successfull_mkv_list_file, 'r') as file:
-            for line in file:
-                if line.endswith(".mkv"):
-                    successful_mkv_list.append(line)
-                elif line.endswith(".txt"):
-                    successful_mkv_txt_list.append(line)
-
-        # Move successfully encoded MKV files to check folder
-        move_files_parallel(os.path.join(MKV_DESTINATION, "mkv_cooked/"), CHECK_FOLDER, successful_mkv_list, 10)
-
-        # Move the successful txt files to logs folder
-        move_files_parallel(os.path.join(MKV_DESTINATION, "mkv_cooked/"), os.path.join(MKV_DESTINATION, 'logs/'),
-                            successful_mkv_txt_list, 10)
-
-        # Move successful DPX sequence folders to dpx_completed/
-        successful_mkv_folder_list = [item.split('.')[0] for item in successful_mkv_list]
-
-        # Add list of moved items to post_rawcooked.log
-        if os.path.getsize(self.successfull_mkv_list_file) > 0:
-            # Log the message
-            log(logfile,
-                "Successful Matroska files moved to check folder, DPX sequences for each moved to dpx_completed:\n")
-            with open(logfile, 'w') as file:
-                file.write("\n".join(os.listdir(self.successfull_mkv_list_file)))
-        else:
-            print("File is empty, skipping")
-
-    def check_big_reversibility_file(self):
-        # ==========================================================================
-        # Error: the reversibility file is becoming big. --output-version 2 pass ===
-        # =========================================================================
-        with os.scandir(os.path.join(MKV_DESTINATION, "mkv_cooked/")) as entries:
-            for entry in entries:
-                if entry.name.endswith(".mkv.txt"):
-                    error_check = False
-                    retry_check = False
-                    mkv_fname1 = entry.name
-                    dpx_folder1 = mkv_fname1.split(".")[0]
-                    with open(f"{MKV_DESTINATION}mkv_cooked/{entry.name}") as file:
-                        for line in file:
-                            if line.find(
-                                    "'Error: undecodable file is becoming too big.\|Error: the reversibility file is "
-                                    "becoming big.'") != -1:
-                                error_check = True
-                    if error_check:
-                        log(logfile, "MKV " + mkv_fname1 + " log has no large reversibility file warning. Skipping")
-                    else:
-                        with open(self.reversibility_list_file) as file:
-                            for line in file:
-                                if line.find(mkv_fname1):
-                                    retry_check = True
-                        file.close()
-                        if retry_check:
-                            log(logfile, f"NEW ENCODING ERROR: ${mkv_fname1} adding to reversibility_list")
-                            with open(self.reversibility_list_file, "w") as file:
-                                file.write(f"{DPX_PATH}dpx_to_cook/{dpx_folder1}")
-                            file.close()
-                            shutil.move(entry.name, MKV_DESTINATION + "logs/retry_" + mkv_fname1 + ".txt")
-
-                        else:
-                            log(logfile,
-                                f"REPEAT ENCODING ERROR: {mkv_fname1} encountered repeated reversilibity data error")
-                            with open(ERRORS + dpx_folder1 + "_errors.log", "w+") as file:
-                                file.write(
-                                    f"post_rawcooked {date}: {mkv_fname1} Repeated reversibility data error for "
-                                    f"sequence:")
-                                file.write(f"    {DPX_PATH}dpx_to_cook/{dpx_folder1}")
-                                file.write("    The FFV1 Matroska will be deleted.")
-                                file.write(
-                                    "Please contact the Knowledge and Collections Developer about this repeated "
-                                    "reversibility failure.")
-                            file.close()
-                            with open(self.matroska_deletion_file, "w") as file:
-                                file.write(mkv_fname1)
-                            file.close()
-                            shutil.move(MKV_DESTINATION + "mkv_cooked/" + entry.name,
-                                        MKV_DESTINATION + "logs/fail_" + mkv_fname1 + ".txt")
-
-        # Add list of reversibility data error to dpx_post_rawcooked.log
-        if os.path.getsize(self.matroska_deletion_file) > 0:
-            log(logfile, "MKV files that will be deleted due to reversibility data error in logs (if present):")
-            with open(self.matroska_deletion_file, 'r') as input_file, open(logfile, 'a') as output_file:
-                deletion_file_name = input_file.read()
-                output_file.write(deletion_file_name)
-                # Delete broken Matroska files if they exist (unlikely as error exits before encoding)
-                if os.path.exists(MKV_DESTINATION + "mkv_cooked/" + deletion_file_name):
-                    os.remove(MKV_DESTINATION + "mkv_cooked/" + deletion_file_name)
-            input_file.close()
-            output_file.close()
-        else:
-            print("No MKV files for deletion. Skipping.")
-
-        # Add reversibility list to logs for reference
-        if os.path.getsize(self.reversibility_list_file):
-            log(logfile, "DPX sequences that will be re-encoded using --output-version 2:")
-            with open(self.reversibility_list_file, 'r') as input_file, open(logfile, 'a') as output_file:
-                output_file.write(input_file.read())
-            input_file.close()
-            output_file.close()
-        else:
-            print("No DPX sequences for re-encoding using --output-version 2. Skipping.")
-
-        # TODO make these checks functions rather than checking everything separately
+    # def move_success_files(self):
+    #     # ===================================================================================
+    #     # Log check passes move to MKV Check folder and logs folders, and DPX folder move ===
+    #     # ===================================================================================
+    #     with os.scandir(MKV_DESTINATION + "mkv_cooked/") as entries:
+    #         for entry in entries:
+    #             filename = entry.name
+    #             if filename.endswith("mkv.txt"):
+    #                 with open(MKV_DESTINATION + "mkv_cooked/" + filename, 'r') as file:
+    #                     for line in file:
+    #                         mkv_filename = filename.split('.')[0] + '.mkv'
+    #                         if line.find('Reversibility was checked, no issue detected.') != -1:
+    #                             print(mkv_filename)
+    #                             dpx_success_path = entry.path
+    #                             log(logfile,
+    #                                 "COMPLETED: RAWcooked MKV " + mkv_filename + "has completed successfully and will "
+    #                                                                              "be moved to check folder")
+    #                             with open(MKV_DESTINATION + "rawcooked_success.log", "a") as f:
+    #                                 f.write(dpx_success_path)
+    #                             with open(self.successfull_mkv_list_file, "a") as f:
+    #                                 f.write(mkv_filename)
+    #                         else:
+    #                             log(logfile,
+    #                                 "SKIP: Matroska " + mkv_filename + " has not completed, or has errors detected")
+    #
+    #     # Move successfully encoded MKV files to check folder
+    #     successful_mkv_list = []
+    #     successful_mkv_txt_list = []
+    #     with open(self.successfull_mkv_list_file, 'r') as file:
+    #         for line in file:
+    #             if line.endswith(".mkv"):
+    #                 successful_mkv_list.append(line)
+    #             elif line.endswith(".txt"):
+    #                 successful_mkv_txt_list.append(line)
+    #
+    #     # Move successfully encoded MKV files to check folder
+    #     move_files_parallel(os.path.join(MKV_DESTINATION, "mkv_cooked/"), CHECK_FOLDER, successful_mkv_list, 10)
+    #
+    #     # Move the successful txt files to logs folder
+    #     move_files_parallel(os.path.join(MKV_DESTINATION, "mkv_cooked/"), os.path.join(MKV_DESTINATION, 'logs/'),
+    #                         successful_mkv_txt_list, 10)
+    #
+    #     # Move successful DPX sequence folders to dpx_completed/
+    #     successful_mkv_folder_list = [item.split('.')[0] for item in successful_mkv_list]
+    #
+    #     # Add list of moved items to post_rawcooked.log
+    #     if os.path.getsize(self.successfull_mkv_list_file) > 0:
+    #         # Log the message
+    #         log(logfile,
+    #             "Successful Matroska files moved to check folder, DPX sequences for each moved to dpx_completed:\n")
+    #         with open(logfile, 'w') as file:
+    #             file.write("\n".join(os.listdir(self.successfull_mkv_list_file)))
+    #     else:
+    #         print("File is empty, skipping")
 
     def check_general_errors(self):
 
         # ===================================================================================
         # General Error/Warning message failure checks - retry or raise in current errors ===
         # ===================================================================================
-        error_messages = ["Reversibility was checked, issues detected, see below.", "Error:", "Conversion failed!",
-                          "Please contact info@mediaarea.net if you want support of such content."]
-        with os.scandir(os.path.join(MKV_DESTINATION, "mkv_cooked/")) as entries:
-            for entry in entries:
-                error_check = False
-                mkv_fname = entry.name
-                dpx_folder = entry.path
-                if entry.name.endswith("mkv.txt"):
-                    with open(entry.name, "r") as file:
-                        for line in file:
-                            for message in error_messages:
-                                if message in line:
-                                    error_check = True
-                if error_check:
-                    log(logfile, f"UNKNOWN ENCODING ERROR: {mkv_fname} encountered error")
-                    with open(dpx_folder + "_errors.log", "w") as file:
-                        file.write(DPX_PATH + "dpx_to_cook/" + dpx_folder)
-                        file.write(f"post_rawcooked {date}: {mkv_fname} Repeat encoding error raised for sequence:")
-                        file.write(f"    {DPX_PATH}dpx_to_cook/{dpx_folder}")
-                        file.write(f"    Matroska file will be deleted.")
-                        file.write(
-                            f"    Please contact the Knowledge and Collections Developer about this repeated encoding "
-                            f"failure")
+        error_messages = [b"Reversibility was checked, issues detected, see below.", b"Error:", b"Conversion failed!",
+                          b"Please contact info@mediaarea.net if you want support of such content."]
 
-                    with open(self.matroska_deletion_file, "a") as file:
-                        file.write(f"{mkv_fname}")
-                    file.close()
-                    shutil.move(entry.name, MKV_DESTINATION + "logs/fail_" + mkv_fname + ".txt")
-                else:
-                    log(logfile,
-                        f"MKV {mkv_fname} log has no error messages. Likely an interrupted or incomplete encoding")
+        error_file_path_list = []
+        with os.scandir(MKV_COOKED_PATH) as files:
+            txt_file_list = [file.path for file in files if file.name.endswith("mkv.txt")]
+
+        for txt_file_path in txt_file_list:
+            with open(txt_file_path, 'rb', 0) as file:
+                s = mmap.mmap(file.fileno(), 0, access=mmap.ACCESS_READ)
+                for msg in error_messages:
+                    if s.find(msg) != -1:
+                        error_file_path_list.append(txt_file_path)
+                        break
+
+        if len(error_file_path_list) > 0:
+            for txt_file_path in error_file_path_list:
+                txt_file_name = txt_file_path.split('/')[-1]
+                mkv_file_name = txt_file_name.replace('.txt', '')
+                mkv_file_path = txt_file_path.replace('.txt', '')
+                log(logfile, f"UNKNOWN ENCODING ERROR: {mkv_file_name} encountered error")
+                log(logfile, f"Moving {mkv_file_name} and {mkv_file_name}.txt for manual review")
+                shutil.move(mkv_file_path, os.path.join(REVIEW_FAILS_PATH, 'mkv_files/'))
+                shutil.move(txt_file_path, os.path.join(REVIEW_FAILS_PATH, 'rawcook_output_logs/'))
 
     def killed_process_workflow(self):
         # ===============================================================
@@ -301,20 +217,6 @@ class DpxPostRawcook:
         # Write an END note to the logfile
         log(logfile, "===================== Post-rawcook workflows ENDED =====================")
 
-    def update_success_count(self):
-        # Update the count of successful cooks at top of the success log
-        # First create new temp_success_log with timestamp
-        with open(MKV_DESTINATION + "temp_rawcooked_success.log", "w") as output_file:
-            output_file.write(f"===================== Updated ===================== {date}")
-            # Count lines in success_log and create count variable, output that count to new success log, then output
-            # all lines with /home* to the new log
-            with open(MKV_DESTINATION + "rawcooked_success.log", "r") as input_file:
-                lines = input_file.readlines()
-                success_count = len(lines)
-                for line in lines:
-                    output_file.write(line)
-            output_file.write(f"===================== Successful cooks: {success_count} ===================== {date}")
-
     def clean(self):
         # Sort the log and remove any non-unique lines
         with open(MKV_DESTINATION + "temp_rawcooked_success.log", "r") as file:
@@ -334,9 +236,10 @@ class DpxPostRawcook:
     def execute(self):
         self.process()
         self.check_mediaconch_policies()
+        self.move_failed_files()
         # self.move_success_files()
         # self.check_big_reversibility_file()
-        # self.check_general_errors()
+        self.check_general_errors()
         # self.killed_process_workflow()
         # self.update_success_count()
         self.clean()
