@@ -48,6 +48,7 @@ class DpxRawcook:
 
     def __init__(self):
         self.logfile = os.path.join(SCRIPT_LOG, "dpx_rawcook.log")
+        self.rawcooked_success_log = os.path.join(MKV_DEST, 'rawcooked_success.log')
         self.temp_rawcooked_file = os.path.join(MKV_DEST, "temporary_rawcook_list.txt")
         self.temp_retry_file = os.path.join(MKV_DEST, "temporary_retry_list.txt")
         self.retry_file = os.path.join(MKV_DEST, "retry_list.txt")
@@ -62,6 +63,10 @@ class DpxRawcook:
 
         if not os.path.exists(self.logfile):
             with open(self.logfile, 'w+'):
+                pass
+
+        if not os.path.exists(self.rawcooked_success_log):
+            with open(self.rawcooked_success_log, 'w+'):
                 pass
 
         # Reading files from mkv_cooked folder and writing it to temp_queued_list
