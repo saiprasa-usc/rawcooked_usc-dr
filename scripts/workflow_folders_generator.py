@@ -21,8 +21,11 @@ def set_root_path():
 def generate_global_log_files():
     print("Generating the logs folder")
     logs_path = os.path.join(ROOT_PATH, 'logs/')
-    if not os.path.exists(logs_path):
-        os.mkdir(logs_path)
+    if os.path.exists(logs_path):
+        print('logs folder is already present')
+        return
+
+    os.mkdir(logs_path)
     log_files = ['dpx_assessment.log', 'dpx_post_rawcook.log', 'dpx_rawcook.log']
     for file_name in log_files:
         file_path = os.path.join(logs_path, file_name)
@@ -36,16 +39,20 @@ def generate_global_log_files():
 def generate_policy_folder():
     print("Generating the Policy folder")
     policy_path = os.path.join(ROOT_PATH, 'policy/')
-    if not os.path.exists(policy_path):
-        os.mkdir(policy_path)
+    if os.path.exists(policy_path):
+        print('policy folder is already present')
+        return
+    os.mkdir(policy_path)
     print("Policy folder created. Keep all the XML Policies here")
 
 
-def generate_media_folders():
+def generate_media_folder():
     print("Generating the media folder")
     media_path = os.path.join(ROOT_PATH, 'media/')
-    if not os.path.exists(media_path):
-        os.mkdir(media_path)
+    if os.path.exists(media_path):
+        print("media folder is already present")
+        return
+    os.mkdir(media_path)
     media_structure = {
         'encoding': {
             'dpx_for_review': {
@@ -83,4 +90,4 @@ if __name__ == '__main__':
     set_root_path()
     generate_global_log_files()
     generate_policy_folder()
-    generate_media_folders()
+    generate_media_folder()
