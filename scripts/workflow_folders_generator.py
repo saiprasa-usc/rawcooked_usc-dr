@@ -10,7 +10,11 @@ dotenv.load_dotenv(dotenv_file)
 ROOT_PATH = '/home/tnandi/Desktop/rawcook_input/'
 
 
-def set_root_path():
+def set_root_path() -> None:
+    """Sets the Environment Variable FILM_OPS as Root Work directory
+    Checks if the path provided is valid and then sets that as the Root Working Directory
+    """
+
     if not os.path.exists(ROOT_PATH):
         print(f"Invalid ROOT PATH: {ROOT_PATH} Does not exist")
         sys.exit(1)
@@ -18,7 +22,10 @@ def set_root_path():
     print("Root Path Set to Environment")
 
 
-def generate_global_log_files():
+def generate_global_log_files() -> None:
+    """Creates the ROOT_PATH/logs folder with three .log files for dpx_assessment, dpx_post_rawcook, dox_rawcook
+    """
+
     print("Generating the logs folder")
     logs_path = os.path.join(ROOT_PATH, 'logs/')
     if os.path.exists(logs_path):
@@ -36,7 +43,10 @@ def generate_global_log_files():
     print("Logs folder created with respective log files")
 
 
-def generate_policy_folder():
+def generate_policy_folder() -> None:
+    """Creates the ROOT_PATH/policy folder. All the .XML policies need to be present in this folder
+    """
+
     print("Generating the Policy folder")
     policy_path = os.path.join(ROOT_PATH, 'policy/')
     if os.path.exists(policy_path):
@@ -46,7 +56,12 @@ def generate_policy_folder():
     print("Policy folder created. Keep all the XML Policies here")
 
 
-def generate_media_folder():
+def generate_media_folder() -> None:
+    """Creates the ROOT_PATH/media folder with the hierarchy defined in media_structure
+    The name of the folders will be the keys in media structure
+    If the value is None then there are no subdirectories
+    """
+
     print("Generating the media folder")
     media_path = os.path.join(ROOT_PATH, 'media/')
     if os.path.exists(media_path):
@@ -75,7 +90,13 @@ def generate_media_folder():
     print("Media folder created")
 
 
-def create_directory(root_path, structure: dict):
+def create_directory(root_path, structure: dict) -> None:
+    """Recursively creates a directory structure
+    Takes a root path and a dictionary where keys are directory name and values are subdirectory names
+    If the value is none, then there are no subdirectory
+    Starts DFS from the root_path and goes on creating directory hierarchy
+    """
+
     if structure is None or len(structure) == 0:
         return
     for name in structure.keys():
