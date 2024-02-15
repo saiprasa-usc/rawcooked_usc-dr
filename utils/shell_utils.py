@@ -59,7 +59,6 @@ def check_mediaconch_policy(policy_path, filename):
 
     command = ['mediaconch', '--force', '-p', policy_path, filename]
     check = subprocess.run(command, capture_output=True)
-
     return check
 
 

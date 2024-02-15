@@ -60,6 +60,10 @@ class DpxAssessment:
             print("No files available for encoding, script exiting")
             sys.exit(1)
 
+        if not os.path.exists(self.logfile):
+            with open(self.logfile, 'w+'):
+                pass
+
         if not os.path.exists(self.success_file):
             with open(self.success_file, 'w+'):
                 pass

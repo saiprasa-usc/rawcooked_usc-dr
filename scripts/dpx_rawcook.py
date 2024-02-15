@@ -29,13 +29,23 @@ def process_mkv(file_name: str, md5_checksum: bool = False):
     # else ''} {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt"
     file_name = file_name.rstrip()
     string_command = f"rawcooked --license 004B159A2BDB07331B8F2FDF4B2F -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum else ''} {DPX_PATH}{file_name} -o {MKV_DEST}mkv_cooked/{file_name}.mkv"
-    output_file_name = f"{MKV_DEST}mkv_cooked/{file_name}.mkv.txt"
+    output_txt_file = f"{MKV_DEST}mkv_cooked/{file_name}.mkv.txt"
     command = string_command.split(" ")
     command = [c for c in command if len(c) > 0]
     command = list(command)
     print(command)
-    with subprocess.Popen(command, text=True) as proc:
-        proc.wait()
+    subprocess_logs = []
+    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as p:
+        for line in p.stderr:
+            subprocess_logs.append(line)
+            print(f"{file_name} : {line}")
+        for line in p.stdout:
+            subprocess_logs.append(line)
+            print(f"{file_name} : {line}")
+
+    std_logs = ''.join(subprocess_logs)
+    with open(output_txt_file, 'a+') as file:
+        file.write(std_logs)
 
 
 def process_mkv_output_v2(line):
