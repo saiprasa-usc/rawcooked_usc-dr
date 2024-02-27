@@ -1,253 +1,301 @@
 import concurrent.futures
+import itertools
 import os
+import shutil
 import subprocess
 
 from dotenv import load_dotenv
 
-from utils import find_utils, logging_utils
+from utils import logging_utils
 
 load_dotenv()
-
-# =========================================================================
-# === RAWcook encoding script, two pass for --check and --check-padding ===
-# =========================================================================
 
 # Global variables extracted from environmental variables
 SCRIPT_LOG = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('DPX_SCRIPT_LOG'))
 DPX_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('DPX_COOK'))
 MKV_DEST = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('MKV_ENCODED'))
+DPX_V2_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ.get('DPX_COOK_V2'))
+DPX_FOR_REVIEW_PATH = os.path.join(os.environ.get('FILM_OPS'), os.environ['DPX_REVIEW'])
 
 SCRIPT_LOG = r'{}'.format(SCRIPT_LOG)
 DPX_PATH = r'{}'.format(DPX_PATH)
+DPX_V2_PATH = r'{}'.format(DPX_V2_PATH)
 MKV_DEST = r'{}'.format(MKV_DEST)
 
 
-# It will not create the .mkv.txt file as Popen() will dump the output in realtime to the console
-def process_mkv(file_name: str, md5_checksum: bool = False):
-    # By observation, any rawcooked failed will result return code 0 but message is captured in stderr code =
-    # f"rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum
-    # else ''} {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt"
-    file_name = file_name.rstrip()
-    string_command = f"rawcooked --license 004B159A2BDB07331B8F2FDF4B2F -y --all --no-accept-gaps -s 5281680 {'--framemd5' if md5_checksum else ''} {DPX_PATH}{file_name} -o {MKV_DEST}mkv_cooked/{file_name}.mkv"
-    output_txt_file = f"{MKV_DEST}mkv_cooked/{file_name}.mkv.txt"
-    command = string_command.split(" ")
-    command = [c for c in command if len(c) > 0]
-    command = list(command)
-    print(command)
-    subprocess_logs = []
-    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as p:
-        for line in p.stderr:
-            subprocess_logs.append(line)
-            print(f"{file_name} : {line}")
-        for line in p.stdout:
-            subprocess_logs.append(line)
-            print(f"{file_name} : {line}")
+def find_dpx_folder_from_sequence(dpx_folder_path) -> dict:
+    dpx_to_cook = {}
+    for seq in os.listdir(dpx_folder_path):
+        seq_path = os.path.join(dpx_folder_path, seq)
+        if os.path.isfile(seq_path) and not seq.endswith('.dpx'):
+            continue
 
-    std_logs = ''.join(subprocess_logs)
-    with open(output_txt_file, 'a+') as file:
-        file.write(std_logs)
+        for dir_path, dir_names, file_names in os.walk(seq_path):
+            if len(file_names) == 0:
+                continue
+            for file_name in file_names:
+                if file_name.endswith('.dpx'):
+                    dpx_to_cook[seq_path] = dir_path
+                    break
 
-
-def process_mkv_output_v2(line):
-    code = f"rawcooked --license 004B159A2BDB07331B8F2FDF4B2F -y --all --no-accept-gaps --output-version 2 -s 5281680 {DPX_PATH}{line} -o {MKV_DEST}mkv_cooked/{line}.mkv &>> {MKV_DEST}mkv_cooked/{line}.mkv.txt"
-    p = subprocess.run(code, shell=True, check=True, stderr=subprocess.PIPE)
-    return "CODE", p.returncode, p.stderr
+    return dpx_to_cook
 
 
 class DpxRawcook:
 
     def __init__(self):
         self.logfile = os.path.join(SCRIPT_LOG, "dpx_rawcook.log")
-        self.rawcooked_success_log = os.path.join(MKV_DEST, 'rawcooked_success.log')
-        self.temp_rawcooked_file = os.path.join(MKV_DEST, "temporary_rawcook_list.txt")
-        self.temp_retry_file = os.path.join(MKV_DEST, "temporary_retry_list.txt")
-        self.retry_file = os.path.join(MKV_DEST, "retry_list.txt")
-        self.rawcook_file = os.path.join(MKV_DEST, "rawcook_list.txt")
-        self.reversibility_file = os.path.join(MKV_DEST, "reversibility_list.txt")
-        self.queued_file = os.path.join(MKV_DEST, "temp_queued_list.txt")
-        self.cooked_folder = os.path.join(MKV_DEST, "mkv_cooked")
+        self.rawcooked_v1_success_log = os.path.join(MKV_DEST, 'rawcooked_dpx_v1_success.log')
+        self.rawcooked_v2_success_log = os.path.join(MKV_DEST, 'rawcooked_dpx_v2_success.log')
+        self.review_dpx_failure_log = os.path.join(MKV_DEST, 'review_dpx_failure.log')
 
-        self.file_names = [self.temp_rawcooked_file, self.temp_retry_file, self.retry_file, self.rawcook_file]
+        self.temp_rawcooked_v1_file = os.path.join(MKV_DEST, "temp_rawcooked_v1_list.txt")
+        self.temp_rawcooked_v2_file = os.path.join(MKV_DEST, "temp_rawcooked_v2_list.txt")
+        self.temp_review_file = os.path.join(MKV_DEST, "temp_review_list.txt")
 
-    def process(self):
+        self.file_names = [self.temp_rawcooked_v1_file, self.temp_rawcooked_v2_file, self.temp_review_file]
+
+        self.mkv_cooked_folder = os.path.join(MKV_DEST, "mkv_cooked/")
+
+    def rawcooked_command_executor(self, start_folder_path: str, mkv_file_name: str, md5_checksum: bool = False,
+                                   v2: bool = False) -> None:
+        """The method passed to each process that executes rawcooked command
+
+        Runs rawcooked command with respective parameters
+        Stores the rawcooked console output to a .txt  file named as <mkv_file_name>.mkv.txt
+        Checks if there are gaps in output v2 sequence, then that sequence is added to temp_review_list.txt
+        """
+
+        string_command = f"rawcooked --license 004B159A2BDB07331B8F2FDF4B2F -y --all --no-accept-gaps {'--output-version 2' if v2 else ''} -s 5281680 {'--framemd5' if md5_checksum else ''} {start_folder_path} -o {MKV_DEST}mkv_cooked/{mkv_file_name}.mkv"
+        output_txt_file = f"{MKV_DEST}mkv_cooked/{mkv_file_name}.mkv.txt"
+        command = string_command.split(" ")
+        command = [c for c in command if len(c) > 0]
+        command = list(command)
+        print(command)
+        subprocess_logs = []
+        with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as p:
+            for line in p.stderr:
+                subprocess_logs.append(line)
+                print(f"{mkv_file_name} : {line}")
+            for line in p.stdout:
+                subprocess_logs.append(line)
+                print(f"{mkv_file_name} : {line}")
+
+        std_logs = ''.join(subprocess_logs)
+        with open(output_txt_file, 'a+') as file:
+            file.write(std_logs)
+
+        # If Rawcooked is executed using output v2 and a gap is found
+        if v2 and std_logs.find('Warning: incoherent file names') != -1:
+            logging_utils.log(self.logfile,
+                              f"FAIL: {start_folder_path} CONTAINS INCOHERENT SEQUENCES. Adding to "
+                              f"temp_review_dpx_list.txt")
+            with open(self.temp_review_file, 'a') as file:
+                file.write(f"{start_folder_path}\n")
+
+    def process(self) -> None:
+        """Initiates the workflow
+
+        Creates log files if not present and creates temporary files
+        """
 
         if not os.path.exists(self.logfile):
             with open(self.logfile, 'w+'):
                 pass
 
-        if not os.path.exists(self.rawcooked_success_log):
-            with open(self.rawcooked_success_log, 'w+'):
+        if not os.path.exists(self.review_dpx_failure_log):
+            with open(self.review_dpx_failure_log, 'w+'):
                 pass
 
-        # Reading files from mkv_cooked folder and writing it to temp_queued_list
-        with open(self.queued_file, 'w') as file:
-            file.write("\n".join(os.listdir(self.cooked_folder)))
+        if not os.path.exists(self.rawcooked_v1_success_log):
+            with open(self.rawcooked_v1_success_log, 'w+'):
+                pass
+
+        if not os.path.exists(self.rawcooked_v2_success_log):
+            with open(self.rawcooked_v2_success_log, 'w+'):
+                pass
 
         # create the temporary files
         for file_name in self.file_names:
-            with open(file_name, 'w') as f:
-                pass
-
-        if not os.path.exists(self.reversibility_file):
-            with open(self.reversibility_file, 'w') as f:
+            with open(file_name, 'w+') as f:
                 pass
 
         # Write a START note to the logfile if files for encoding, else exit
-        if os.path.isfile(self.reversibility_file):
-            logging_utils.log(self.logfile, "============= DPX RAWcook script START =============")
-        elif not len(os.listdir(DPX_PATH)):
-            print("No files available for encoding, script exiting")
-        else:
-            logging_utils.log(self.logfile, "============= DPX RAWcook script START =============")
+        logging_utils.log(self.logfile, "============= DPX RAWcook script START =============")
 
-    # ========================
-    # === RAWcook pass one ===
-    # ========================
+    def pass_one(self) -> None:
+        """Executes Rawcooked over the sequences present in dpx_to_cook_v2
 
-    # Cooks with output v2
-    def pass_one(self):
+        These sequences have large reversibility file and thus needs to be cooked with --output-version 2 flag
+        Runs Rawcooked twice, once without the --framemd5 flag and then with --framemd5 flag
+        The processed sequences are added to the temp_rawcooked_v2_list.txt file
+        """
+
         # Run first pass where list generated for large reversibility cases by dpx_post_rawcook.sh
         logging_utils.log(self.logfile, "Checking for files that failed RAWcooked due to large reversibility files")
-        with open(self.reversibility_file, 'r') as file:
-            rev_file_list = file.read().splitlines()
 
-        for rev_file in rev_file_list:
-            print(self.reversibility_file)
-            print("+++++++++++++++++++++++++++++++++++++++++++++")
-            folder_retry = os.path.basename(rev_file)
-            count_cooked_2 = 0
-            count_queued_2 = 0
-            with open(MKV_DEST + "rawcooked_success.log", 'r') as file:
-                for line in file:
-                    count_cooked_2 += line.count(folder_retry)
-            with open(self.queued_file, 'r') as file:
-                for line in file:
-                    count_queued_2 += line.count(folder_retry)
+        # <sequence path, dpx_folder_path> pairs
+        sequence_map = find_dpx_folder_from_sequence(DPX_V2_PATH)
 
-            # Those not already queued/active passed to list, else bypassed
-            if count_cooked_2 == 0 and count_queued_2 == 0:
-                with open(self.temp_retry_file, 'a') as file:
-                    file.write(folder_retry)
+        if len(sequence_map) == 0:
+            logging_utils.log(self.logfile, "No sequence found to be cooked with RAWCooked V2")
+            return
 
-        # Sort the temporary_rawcook_list by part of extension, pass first 20 to rawcook_list.txt
-        with open(self.temp_retry_file, 'r') as file:
-            cook_retry = list(set(file.read().splitlines()))
-            cook_retry.sort()
+        # Taking only 20 entries from the dictionary
+        dpx_to_cook = dict(itertools.islice(sequence_map.items(), 20))
 
-            logging_utils.log(self.logfile, "DPX folder will be cooked using --output-version 2:")
-            if cook_retry and len(cook_retry) > 0:
-                with open(self.retry_file, 'w') as file:
-                    file.writelines(item + "\n" for item in cook_retry if cook_retry)
+        # Store the paths in a temporary .txt file
+        # If execution stops, we can see the sequences that were cooked
+        with open(self.temp_rawcooked_v2_file, 'a+') as file:
+            for seq_path in dpx_to_cook.keys():
+                file.write(f"{seq_path}\n")
+                logging_utils.log(self.logfile, f"{seq_path} will be cooked using RAWCooked V2")
 
-                logging_utils.log(self.logfile, (item + "\n" for item in cook_retry if cook_retry))
+                mkv_file_name = os.path.basename(seq_path)
 
-        with open(f'{MKV_DEST}retry_list.txt') as retry_list:
-            for file_name in retry_list:
                 with concurrent.futures.ProcessPoolExecutor() as executor:
-                    f0 = executor.submit(process_mkv_output_v2, file_name)
+                    executor.submit(self.rawcooked_command_executor, seq_path, mkv_file_name, False, True)
 
-        # # Begin RAWcooked processing with GNU Parallel using --output-version 2
-        # command = f'cat "{MKV_DEST}retry_list.txt" | parallel --jobs 4 "rawcooked --license 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps --output-version 2 -s 5281680 ${DPX_PATH}{{}} -o ${MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"'
-        # process = subprocess.run(command, shell=True, capture_output=True)
-        # # TODO change above command to parallel jobs
-
-    # ========================
-    # === RAWcook pass two ===
-    # ========================
-
-    # Cooks with output v1
-    def pass_two(self):
-        # Refresh temporary queued list
-        temp_queued_list = os.listdir(self.cooked_folder)
-        with open(self.queued_file, 'w') as file:
-            file.write("\n".join(temp_queued_list))
-
-        # When large reversibility cooks complete target all N_ folders, and pass any not already being processed to
-        # temporary_rawcook_list.txt
-        logging_utils.log(self.logfile, "Outputting files from DPX_PATH to list, if not already queued")
-        folders = find_utils.find_directories(DPX_PATH, 1)
-        folders = [f for f in folders if f != DPX_PATH]
-        print("FOLDERS:", folders)
-        for folder in folders:
-            name = folder.split('/')[-1]
-            if name is not None:
-                folder_clean = os.path.basename(folder)
-                print("NAME:", folder_clean)
-                count_cooked = 0
-                count_queued = 0
-                with open(MKV_DEST + "rawcooked_success.log", "r") as file:
-                    for line in file:
-                        count_cooked += line.count(folder_clean)
-                with open(self.queued_file, "r") as file:
-                    for line in file:
-                        count_queued += line.count(folder_clean)
-                    print(count_queued)
-                if count_cooked == 0 and count_queued == 0:
-                    with open(self.temp_rawcooked_file, 'a') as file:
-                        file.write(f"{folder_clean}\n")
-
-        cook_list = []
-
-        # Sort the temporary_rawcook_list by part of extension, pass first 20 to rawcook_list.txt and write items to log
-        with open(self.temp_rawcooked_file, 'r') as file:
-            for line in file:
-                if line is not None:
-                    cook_list.append(line)
-
-        logging_utils.log(self.logfile, "DPX folder will be cooked:")  # TODO Change this dumb logic
-        if cook_list is not None:
-            cook_list.sort()
-            print(cook_list)
-            cook_list = list(set(cook_list))[0:20]
-            with open(self.rawcook_file, 'w') as file:
-                for file_name in cook_list:
-                    file.write(file_name)
-
-            logging_utils.log(self.logfile, "".join(cook_list))
-
-        # Begin RAWcooked processing with GNU Parallel
-
-        path = f'{MKV_DEST}rawcook_list.txt'
-        path = r'{}'.format(path)
-        with open(path) as cook_list:
-            for file_name in cook_list:
-                print("DEBUG", file_name)
+                # Cooking with --framemd5 flag
                 with concurrent.futures.ProcessPoolExecutor() as executor:
-                    f1 = executor.submit(process_mkv, file_name, False)
+                    executor.submit(self.rawcooked_command_executor, seq_path, mkv_file_name, True, True)
 
-        # command = (f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license
-        # 00C5BAEDE01E98D64496F0 -y --all ' f'--no-accept-gaps -s 5281680 {DPX_PATH}{{}} -o {MKV_DEST}mkv_cooked/{{
-        # }}.mkv &>> {MKV_DEST}mkv_cooked/{{' f'}}.mkv.txt"') process = subprocess.run(command, shell=True,
-        # capture_output=True) TODO change above command to parallel jobs
+    def pass_two(self) -> None:
+        """Executes Rawcooked over the sequences present in dpx_to_cook
 
-        with open(path) as cook_list:
-            for file_name in cook_list:
+        These sequences do NOT need to be cooked with --output-version 2 flag
+        Runs Rawcooked twice, once without the --framemd5 flag and then with --framemd5 flag
+        The processed sequences are added to the temp_rawcooked_v1_list.txt file
+        """
+
+        logging_utils.log(self.logfile, "Checking for files to cook using RAWCooked V1")
+        sequence_map = find_dpx_folder_from_sequence(DPX_PATH)
+
+        if len(sequence_map) == 0:
+            logging_utils.log(self.logfile, "No sequence found to be cooked with RAWCooked V1")
+            return
+
+        # Taking only 20 entries from the dictionary
+        dpx_to_cook = dict(itertools.islice(sequence_map.items(), 20))
+
+        print(dpx_to_cook)
+
+        # Store the paths in a temporary .txt file
+        # If execution stops, we can see the sequences that were cooked
+        with open(self.temp_rawcooked_v1_file, 'a+') as file:
+            for seq_path in dpx_to_cook.keys():
+                file.write(f"{seq_path}\n")
+                logging_utils.log(self.logfile, f"{seq_path} will be cooked using RAWCooked V2")
+
+                mkv_file_name = os.path.basename(seq_path)
+
                 with concurrent.futures.ProcessPoolExecutor() as executor:
-                    f2 = executor.submit(process_mkv, file_name, True)
-        # command = f'cat "{MKV_DEST}rawcook_list.txt" | parallel --jobs 4 "rawcooked --license
-        # 00C5BAEDE01E98D64496F0 -y --all --no-accept-gaps -s 5281680 --framemd5 {DPX_PATH}{{}} -o {
-        # MKV_DEST}mkv_cooked/{{}}.mkv &>> {MKV_DEST}mkv_cooked/{{}}.mkv.txt"' process = subprocess.run(command,
-        # shell=True, capture_output=True)
+                    executor.submit(self.rawcooked_command_executor, seq_path, mkv_file_name, False, False)
 
-        # TODO change above command to parallel jobs
+                # Cooking with --framemd5 flag
+                with concurrent.futures.ProcessPoolExecutor() as executor:
+                    executor.submit(self.rawcooked_command_executor, seq_path, mkv_file_name, True, False)
 
-        logging_utils.log(self.logfile, "===================== DPX RAWcook ENDED =====================")
+    def process_temporary_files(self) -> list:
+        """Process the data inside temporary files and returns a list of sequences that needs review
+
+        Reads the sequence paths with gaps from temp_review_list.txt
+        And stores them into review_dpx_failure.log
+        Removes these failed files from temp_rawcooked_v2_list.txt
+        And stores the successfully cooked files into rawcooked_dpx_v2_success.log
+
+        Return the list of failed sequence paths
+        """
+
+        dpx_review_list = []
+        with open(self.temp_review_file, 'r') as file:
+            for line in file.readlines():
+                dpx_review_list.append(line.strip())
+
+        dpx_review_list = set(dpx_review_list)
+        for line in dpx_review_list:
+            with open(self.review_dpx_failure_log, 'a') as file:
+                file.write(f"{line}\n")
+
+        success_list = []
+        with open(self.temp_rawcooked_v2_file, 'r') as file:
+            for line in file.readlines():
+                line = line.strip()
+                if line not in dpx_review_list:
+                    success_list.append(line)
+
+        for line in success_list:
+            with open(self.rawcooked_v2_success_log, 'a') as file:
+                file.write(f"{line}\n")
+
+        return list(dpx_review_list)
+
+    def process_review_sequences(self, sequences_to_review: list) -> None:
+        """Process the failed sequences that need manual review
+
+        Takes a list of sequence paths as input
+        Moves these sequences to dpx_for_review folder
+        Removes the .framemd5 file
+        Removes the cooked .mkv and the respective .txt file from encoded/mkv_cooked folder
+        """
+
+        for seq in sequences_to_review:
+            # Move the sequence folder to dpx_for_review
+            if not os.path.exists(os.path.join(DPX_FOR_REVIEW_PATH, os.path.basename(seq))):
+                shutil.move(seq, DPX_FOR_REVIEW_PATH)
+                logging_utils.log(self.logfile, f"MOVED {seq} to dpx_for_review folder")
+            else:
+                logging_utils.log(self.logfile, f"CAN NOT MOVE {seq} to dpx_for_review folder. A sequence with same "
+                                                f"name already exists")
+
+            # Remove MD5 file
+            md5_path = f"{seq}.framemd5"
+            if os.path.exists(md5_path):
+                os.remove(md5_path)
+                logging_utils.log(self.logfile, f"DELETED: {md5_path}")
+
+            # Remove the cooked .mkv and respective .txt files
+            mkv_file_name = f"{os.path.basename(seq)}.mkv"
+            txt_file_name = f"{mkv_file_name}.txt"
+            mkv_file_path = os.path.join(self.mkv_cooked_folder, mkv_file_name)
+            txt_file_path = os.path.join(self.mkv_cooked_folder, txt_file_name)
+            if os.path.exists(mkv_file_path):
+                os.remove(mkv_file_path)
+                logging_utils.log(self.logfile, f"DELETED: {mkv_file_path}")
+            if os.path.exists(txt_file_path):
+                os.remove(txt_file_path)
+                logging_utils.log(self.logfile, f"DELETED: {txt_file_path}")
 
     def clean(self):
+        """Concludes the workflow
+
+        Adds all the successfully cooked v1 files from temp_rawcooked_v1_list.txt to rawcooked_dpx_v1_success.log
+        Removes all the temporary files created during the workflow
+        """
+
+        with open(self.rawcooked_v1_success_log, 'a') as target:
+            with open(self.temp_rawcooked_v1_file, 'r') as source:
+                target.write(source.read())
+
         # Clean up temporary files
         for file_name in self.file_names:
             if os.path.exists(file_name):
                 os.remove(file_name)
                 print(f"Deleted file: {file_name}")
-            else:
-                print(f"File not found: {file_name}")
+
+        logging_utils.log(self.logfile, "============= DPX RAWcook script END =============")
 
     def execute(self):
         # TODO: Implement Error handling mechanisms
-        # TODO: Clean unnecessary print statements
         self.process()
+
         self.pass_one()
         self.pass_two()
+
+        dpx_review_list = self.process_temporary_files()
+        if len(dpx_review_list) > 0:
+            self.process_review_sequences(dpx_review_list)
+
         self.clean()
 
 
