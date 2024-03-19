@@ -31,12 +31,12 @@ To get started, please follow these steps to set up the necessary environment va
     ```bash
     mv .env.example .env
     ```
-3. **Fill in the Variables**: Open the `.env` file in a text editor of your choice. You will see a list of environment variables with placeholder values. Replace these placeholders with the actual values corresponding to your system environment variables and paths to different folders.
+3. **Fill in the Variables**: Open the `.env` file in a text editor of your choice. You will see a list of environment variables with placeholder values. Replace these placeholders with the actual values corresponding to your system environment variables and paths to different folders. **NOTE: Every variable that mentions <relative-path> is relative to FILM_OPS**
 
     Example:
     ```
     FILM_OPS=<path-to-project>
-    DPX_SCRIPT_LOG=<path-to-logs-folder>
+    DPX_SCRIPT_LOG=<relative-path-to-logs-folder>
     ...
     ```
 4. **Save the Changes**: Once you've filled in all the necessary variables, save the `.env` file.
