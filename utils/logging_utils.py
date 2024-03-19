@@ -15,3 +15,9 @@ def log(logfile, message):
     with open(logfile, "a") as file:
         file.write(log_message + "\n")
     print(log_message)
+
+
+def write_permanent_logs(source_temp_file, target_file):
+    with open(target_file, 'a') as target:
+        with open(source_temp_file, 'r') as source:
+            target.write(source.read())

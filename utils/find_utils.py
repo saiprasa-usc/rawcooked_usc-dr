@@ -41,3 +41,21 @@ def find_in_logs(file_path, search_text):
             if search_text in line:
                 return True
     return False
+
+
+def find_dpx_folder_from_sequence(dpx_folder_path) -> dict:
+    dpx_sequence = {}
+    for seq in os.listdir(dpx_folder_path):
+        seq_path = os.path.join(dpx_folder_path, seq)
+        if os.path.isfile(seq_path) and not seq.endswith('.dpx'):
+            continue
+
+        for dir_path, dir_names, file_names in os.walk(seq_path):
+            if len(file_names) == 0:
+                continue
+            for file_name in file_names:
+                if file_name.endswith('.dpx'):
+                    dpx_sequence[seq_path] = dir_path
+                    break
+
+    return dpx_sequence

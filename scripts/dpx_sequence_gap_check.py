@@ -3,6 +3,7 @@ import logging
 import re
 import shutil
 import sys
+from utils import find_utils
 
 from dotenv import load_dotenv
 
@@ -22,22 +23,7 @@ DPX_REVIEW_PATH = r'{}'.format(DPX_REVIEW_PATH)
 DPX_TO_ASSESS_PATH = r'{}'.format(DPX_TO_ASSESS_PATH)
 
 
-def find_dpx_folder_from_sequence(dpx_folder_path) -> dict:
-    dpx_to_check = {}
-    for seq in os.listdir(dpx_folder_path):
-        seq_path = os.path.join(dpx_folder_path, seq)
-        if os.path.isfile(seq_path) and not seq.endswith('.dpx'):
-            continue
 
-        for dir_path, dir_names, file_names in os.walk(seq_path):
-            if len(file_names) == 0:
-                continue
-            for file_name in file_names:
-                if file_name.endswith('.dpx'):
-                    dpx_to_check[seq_path] = dir_path
-                    break
-
-    return dpx_to_check
 
 
 class DpxGapCheck:
@@ -82,7 +68,7 @@ class DpxGapCheck:
         paths = [x for x in os.listdir(DPX_GAP_CHECK_PATH) if os.path.isdir(os.path.join(DPX_GAP_CHECK_PATH, x))]
         if not paths:
             sys.exit()
-        sequence_map = find_dpx_folder_from_sequence(DPX_GAP_CHECK_PATH)
+        sequence_map = find_utils.find_dpx_folder_from_sequence(DPX_GAP_CHECK_PATH)
         print(sequence_map)
 
         for dpath in sequence_map.values():

@@ -54,7 +54,7 @@ def check_mediaconch_policy(policy_path, filename):
 
     @param policy_path: Path to the file containing the policies
     @param filename: The DPX file path which is verified against the policies
-    @return: The output of the mediconch command
+    @return: The output of the mediaconch command
     """
 
     command = ['mediaconch', '--force', '-p', policy_path, filename]
@@ -94,3 +94,9 @@ def move_files_parallel(source_dir, destination_dir, file_list, num_jobs):
                 future.result()
             except Exception as e:
                 print(f"Error moving {filename}: {e}")
+
+
+def create_file(file):
+    if not os.path.exists(file):
+        with open(file, "w+"):
+            pass
