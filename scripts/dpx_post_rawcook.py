@@ -127,9 +127,16 @@ class DpxPostRawcook:
             txt_file_name = txt_file_path.split('/')[-1]
             mkv_file_name = txt_file_name.replace('.txt', '')
             mkv_file_path = txt_file_path.replace('.txt', '')
-            log(self.logfile, f"UNKNOWN ENCODING ERROR: {mkv_file_name} encountered error")
-            log(self.logfile, f"Moving {mkv_file_name} and {mkv_file_name}.txt for manual review")
-            shutil.move(mkv_file_path, os.path.join(REVIEW_FAILS_PATH, 'mkv_files/'))
+
+            if os.path.exists(mkv_file_path):
+                log(self.logfile, f"UNKNOWN ENCODING ERROR: {mkv_file_name} encountered error")
+                log(self.logfile, f"Moving {mkv_file_name} for manual review")
+                shutil.move(mkv_file_path, os.path.join(REVIEW_FAILS_PATH, 'mkv_files/'))
+            else:
+                log(self.logfile, f"UNKNOWN ENCODING ERROR: {mkv_file_name} was not created by RawCooked. "
+                                  f"Check {txt_file_name} for Rawcooked logs")
+
+            log(self.logfile, f"Moving {txt_file_name} for manual review")
             shutil.move(txt_file_path, os.path.join(REVIEW_FAILS_PATH, 'rawcook_output_logs/'))
 
     def clean(self):

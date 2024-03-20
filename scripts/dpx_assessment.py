@@ -138,7 +138,7 @@ class DpxAssessment:
             # The value of dpx_to_check dict is the path to a .dpx file which implies that the parent of this path is
             # The root dpx folder that rawcooked should take as input
             root_dpx_folder = Path(dpx_to_check.get(seq)).parent
-            command = ['rawcooked', '--check', '--no-encode', root_dpx_folder]
+            command = ['rawcooked', '--license', '004B159A2BDB07331B8F2FDF4B2F', '--check', '--no-encode', root_dpx_folder]
             logging_utils.log(self.logfile,
                               f"Checking for incoherent sequences and large reversibility file issue in {seq}")
 
