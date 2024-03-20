@@ -7,7 +7,7 @@ dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
 
 # Take user input
-ROOT_PATH = '/home/tnandi/Desktop/rawcook_input/'
+ROOT_PATH = r'/home/test_again'
 
 
 def set_root_path() -> None:
