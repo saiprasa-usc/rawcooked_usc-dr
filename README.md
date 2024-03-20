@@ -15,8 +15,31 @@
 │           ├── <font color="#3465A4"><b>dpx_to_cook_v2</b></font>
 │           └── <font color="#3465A4"><b>encoded</b></font>
 │               └── <font color="#3465A4"><b>mkv_cooked</b></font>
-└── <font color="#3465A4"><b>policy</b></font>
+├── <font color="#3465A4"><b>policy</b></font>
+└──.env 
 </pre>
+## Setup
+To get started, please follow these steps to set up the necessary environment variables:
+
+1. **Clone the Repository**: Start by cloning the project repository to your local machine using Git:
+
+    ```bash
+    git clone https://github.com/saiprasa-usc/rawcooked_usc-dr.git
+    ```
+2. **Rename `.env.example` to `.env`**: In the root directory of the cloned repository, you will find a file named `.env.example`. Rename this file to `.env`. This file will hold your environment variables.
+
+    ```bash
+    mv .env.example .env
+    ```
+3. **Fill in the Variables**: Open the `.env` file in a text editor of your choice. You will see a list of environment variables with placeholder values. Replace these placeholders with the actual values corresponding to your system environment variables and paths to different folders. **NOTE: Every variable that mentions <relative-path> is relative to FILM_OPS**
+
+    Example:
+    ```
+    FILM_OPS=<path-to-project>
+    DPX_SCRIPT_LOG=<relative-path-to-logs-folder>
+    ...
+    ```
+4. **Save the Changes**: Once you've filled in all the necessary variables, save the `.env` file.
 
 ## Workflow
 
