@@ -1,5 +1,6 @@
 import sys
 
+from PyQt5.QtCore import QThreadPool
 from PyQt5.QtWidgets import (
     QLabel, QApplication, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QWidget, QFormLayout, QFileDialog,
     QPlainTextEdit
@@ -21,6 +22,9 @@ class MainWindow(QWidget):
 
         # Class Level Data Variables
         self.root_path = None
+
+        # Thread pool
+        self.threadpool = QThreadPool()
 
         # Main window properties
         self.setWindowTitle("RawCooked Executor")
@@ -60,7 +64,14 @@ class MainWindow(QWidget):
         self.setLayout(self.base_layout)
 
     def generate_directory_structure(self):
-        pass
+        # TODO: Validate the root_path
+        generator = workflow_folders_generator.WorkFolderGenerator(self.root_path)
+        generator.signals.progressMessage.connect(self.display_output)
+
+        self.threadpool.start(generator)
+
+    def display_output(self, message: str):
+        self.output_text_box.appendPlainText(message)
 
     def launch_root_path_browse_window(self):
         response = QFileDialog.getExistingDirectory(
@@ -69,6 +80,7 @@ class MainWindow(QWidget):
             "/home",
             QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
         )
+        self.root_path_line_edit.setText(response)
         self.root_path = response
 
 
