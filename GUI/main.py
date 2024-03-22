@@ -1,8 +1,10 @@
 import sys
 
 from PyQt5.QtWidgets import (
-    QLabel, QApplication, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QWidget, QFormLayout, QFileDialog
+    QLabel, QApplication, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QWidget, QFormLayout, QFileDialog,
+    QPlainTextEdit
 )
+from scripts import workflow_folders_generator
 
 
 class MainWindow(QWidget):
@@ -10,10 +12,12 @@ class MainWindow(QWidget):
         super().__init__()
 
         # Class Level UI Elements
+        self.output_text_box = None
         self.base_form_layout = None
         self.root_path_browse_button = None
         self.root_path_line_edit = None
         self.base_layout = None
+        self.generate_button = None
 
         # Class Level Data Variables
         self.root_path = None
@@ -39,9 +43,24 @@ class MainWindow(QWidget):
         hbox.addWidget(self.root_path_line_edit)
         hbox.addWidget(self.root_path_browse_button)
         self.base_form_layout.addRow(root_path_label, hbox)
-        self.base_layout.addLayout(self.base_form_layout)
 
+        # Output Text Area UI
+        self.output_text_box = QPlainTextEdit()
+        self.output_text_box.setReadOnly(True)
+
+        # Generate Work Directory Button
+        self.generate_button = QPushButton("Generate Directory Structure")
+        self.generate_button.clicked.connect(self.generate_directory_structure)
+
+        # Adding UI Components to the base layout
+        self.base_layout.addLayout(self.base_form_layout)
+        self.base_layout.addWidget(QLabel("Console Output: "))
+        self.base_layout.addWidget(self.output_text_box)
+        self.base_layout.addWidget(self.generate_button)
         self.setLayout(self.base_layout)
+
+    def generate_directory_structure(self):
+        pass
 
     def launch_root_path_browse_window(self):
         response = QFileDialog.getExistingDirectory(
