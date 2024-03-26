@@ -6,7 +6,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from utils import find_utils, shell_utils, logging_utils
+from utils import find_utils, shell_utils, logging_utils, gap_check_utils
 
 # Load environment variables from .env file
 load_dotenv()
@@ -47,6 +47,7 @@ class DpxAssessment:
             self.temp_rawcooked_dpx_file, self.temp_rawcooked_v2_dpx_file,
             self.temp_tar_dpx_file, self.temp_review_dpx_file
         ]
+        self.dpx_to_assess = {}
 
     def process(self) -> None:
         """Initiates the workflow
@@ -74,14 +75,13 @@ class DpxAssessment:
                 pass
             print(f"Created file: {file_name}")
 
-    def find_dpx_to_check(self) -> dict:
+    def find_dpx_to_assess(self):
         """Randomly retrieves a DPX file in each folder and creates a dictionary with <root_folder, dpx_file> pairs
 
         Recursively traverse through each sequence folder until the depth at which it finds a .dpx file
         Stores the root folder path and the path of the randomly chosen .dpx file as key value pairs in dpx_to_check
         Skips a sequence if the same absolute path is already present in rawcook_dpx_success.log or tar_dpx_failures.log
         """
-        dpx_to_check = {}
         for seq in os.listdir(DPX_PATH):
             seq_path = os.path.join(DPX_PATH, seq)
             if os.path.isfile(seq_path) and not seq.endswith('.dpx'):
@@ -104,22 +104,46 @@ class DpxAssessment:
                     continue
                 for file_name in file_names:
                     if file_name.endswith('.dpx'):
-                        dpx_to_check[seq_path] = os.path.join(dir_path, file_name)
+                        self.dpx_to_assess[seq_path] = os.path.join(dir_path, file_name)
                         break
 
-        return dpx_to_check
 
-    def check_v2(self, dpx_to_check: dict):
+    def gap_check(self):
+        """
+                    Iterate all folders containing dpx files
+                    Check in each folder if DPX list is shorter than min() max() range list
+                    If yes, report different to log and move folder to dpx_for_review
+                    If identical, move folder to dpx_to_assess/ folder for folder type
+                    old folder formatting or new folder formatting
+        """
+        #TODO: Add logging
+        for seq in self.dpx_to_assess.keys():
+            dpath = Path(self.dpx_to_assess.get(seq)).parent
+            has_gaps = gap_check_utils.find_missing(dpath)
+            folder_name = dpath.name
+            if has_gaps:
+                print("GAPS PRESENT IN FOLDERS:")
+                move_path = os.path.join(DPX_FOR_REVIEW_PATH, folder_name)
+                try:
+                    shutil.move(dpath, move_path)
+                except Exception as e:
+                    print(e)
+                self.dpx_to_assess.pop(seq)
+
+    def check_v2(self):
         """Executes Rawcooked to check if the sequence generates a large reversibility file
 
         The sequences with large reversibility file is added to a temp_rawcooked_v2_dpx_list.txt file
         """
+        if not len(self.dpx_to_assess):
+            print("Nothing to assess. Script Exiting")
+            sys.exit()
         sequences_to_v2 = []
-        for seq in dpx_to_check.keys():
+        for seq in self.dpx_to_assess.keys():
             # Rawcooked should take a folder as input which contains only .dpx files and no other metadata file
             # The value of dpx_to_check dict is the path to a .dpx file which implies that the parent of this path is
             # The root dpx folder that rawcooked should take as input
-            root_dpx_folder = Path(dpx_to_check.get(seq)).parent
+            root_dpx_folder = Path(self.dpx_to_assess.get(seq)).parent
             command = ['rawcooked', '--check', '--no-encode', root_dpx_folder]
             logging_utils.log(self.logfile,
                               f"Checking for large reversibility file issue in {seq}")
@@ -148,12 +172,14 @@ class DpxAssessment:
 
         # We don't need to run mediaconch over these sequences so remove the entries
         for seq in sequences_to_v2:
-            dpx_to_check.pop(seq)
+            self.dpx_to_assess.pop(seq)
 
     def check_mediaconch_policy(self, dpx_to_check: dict) -> None:
         """Checks if the dpx files passed as parameters matches mediaconch policies
         """
-
+        if not len(self.dpx_to_assess):
+            print("Nothing to assess. Script Exiting")
+            sys.exit()
         for seq in dpx_to_check.keys():
             dpx = dpx_to_check.get(seq)
             logging_utils.log(self.logfile, f"Metadata file creation has started for: {dpx}")
@@ -226,6 +252,7 @@ class DpxAssessment:
 
         1. process(): Checks if .dpx files are present in the input folder and creates temporary files
         2. find_dpx_to_check(): Finds the dpx files at any depth and returns a dict with <root_path, file_path> pairs
+        3. gap_check(): Checks if any dpx sequences have incoherent gaps and if so, moves them to dpx_to_review/gap_check_fails
         3. check_v2(): It takes the dict and runs rawcooked to check if there is are large reversibility files
                          Removes the sequence from the dict
         4. check_mediaconch_policy(): Check a randomly chosen .dpx file from each sequence against mediaconch policies
@@ -237,13 +264,16 @@ class DpxAssessment:
 
         # TODO: Implement error handling mechanisms
         self.process()
-        dpx_to_check = self.find_dpx_to_check()
-        self.check_v2(dpx_to_check)
-        self.check_mediaconch_policy(dpx_to_check)
+        self.find_dpx_to_assess()
+        self.gap_check()
+        self.check_v2()
+        self.check_mediaconch_policy()
         self.move_v2_sequences()
         self.move_passed_sequences()
         self.log_success_failure()
         self.clean()
+
+
 
 
 if __name__ == '__main__':
