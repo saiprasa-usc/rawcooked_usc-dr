@@ -7,7 +7,7 @@ import subprocess
 
 from dotenv import load_dotenv
 
-from utils import logging_utils
+from utils import logging_utils, find_utils, shell_utils
 
 load_dotenv()
 
@@ -22,24 +22,6 @@ SCRIPT_LOG = r'{}'.format(SCRIPT_LOG)
 DPX_PATH = r'{}'.format(DPX_PATH)
 DPX_V2_PATH = r'{}'.format(DPX_V2_PATH)
 MKV_DEST = r'{}'.format(MKV_DEST)
-
-
-def find_dpx_folder_from_sequence(dpx_folder_path) -> dict:
-    dpx_to_cook = {}
-    for seq in os.listdir(dpx_folder_path):
-        seq_path = os.path.join(dpx_folder_path, seq)
-        if os.path.isfile(seq_path) and not seq.endswith('.dpx'):
-            continue
-
-        for dir_path, dir_names, file_names in os.walk(seq_path):
-            if len(file_names) == 0:
-                continue
-            for file_name in file_names:
-                if file_name.endswith('.dpx'):
-                    dpx_to_cook[seq_path] = dir_path
-                    break
-
-    return dpx_to_cook
 
 
 class DpxRawcook:
@@ -100,27 +82,14 @@ class DpxRawcook:
 
         Creates log files if not present and creates temporary files
         """
-
-        if not os.path.exists(self.logfile):
-            with open(self.logfile, 'w+'):
-                pass
-
-        if not os.path.exists(self.review_dpx_failure_log):
-            with open(self.review_dpx_failure_log, 'w+'):
-                pass
-
-        if not os.path.exists(self.rawcooked_v1_success_log):
-            with open(self.rawcooked_v1_success_log, 'w+'):
-                pass
-
-        if not os.path.exists(self.rawcooked_v2_success_log):
-            with open(self.rawcooked_v2_success_log, 'w+'):
-                pass
+        shell_utils.create_file(self.logfile)
+        shell_utils.create_file(self.review_dpx_failure_log)
+        shell_utils.create_file(self.rawcooked_v1_success_log)
+        shell_utils.create_file(self.rawcooked_v2_success_log)
 
         # create the temporary files
         for file_name in self.file_names:
-            with open(file_name, 'w+') as f:
-                pass
+            shell_utils.create_file(file_name)
 
         # Write a START note to the logfile if files for encoding, else exit
         logging_utils.log(self.logfile, "============= DPX RAWcook script START =============")
@@ -137,7 +106,7 @@ class DpxRawcook:
         logging_utils.log(self.logfile, "Checking for files that failed RAWcooked due to large reversibility files")
 
         # <sequence path, dpx_folder_path> pairs
-        sequence_map = find_dpx_folder_from_sequence(DPX_V2_PATH)
+        sequence_map = find_utils.find_dpx_folder_from_sequence(DPX_V2_PATH)
 
         if len(sequence_map) == 0:
             logging_utils.log(self.logfile, "No sequence found to be cooked with RAWCooked V2")
@@ -170,7 +139,7 @@ class DpxRawcook:
         """
 
         logging_utils.log(self.logfile, "Checking for files to cook using RAWCooked V1")
-        sequence_map = find_dpx_folder_from_sequence(DPX_PATH)
+        sequence_map = find_utils.find_dpx_folder_from_sequence(DPX_PATH)
 
         if len(sequence_map) == 0:
             logging_utils.log(self.logfile, "No sequence found to be cooked with RAWCooked V1")
