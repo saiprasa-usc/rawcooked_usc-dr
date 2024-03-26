@@ -24,7 +24,6 @@ def find_missing(path):
     first_dpx = filenames[file_nums.index(min(file_nums))]
     last_dpx = filenames[file_nums.index(max(file_nums))]
     missing = list(set(file_nums) ^ set(file_range))
-    print(missing)
     if len(missing) > 0:
         gaps = True
     return gaps

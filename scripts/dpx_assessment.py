@@ -47,6 +47,8 @@ class DpxAssessment:
             self.temp_rawcooked_dpx_file, self.temp_rawcooked_v2_dpx_file,
             self.temp_tar_dpx_file, self.temp_review_dpx_file
         ]
+
+        # Dictionary containing the root folder and one file that needs to be assessed through the assessment script
         self.dpx_to_assess = {}
 
     def process(self) -> None:
@@ -107,16 +109,16 @@ class DpxAssessment:
                         self.dpx_to_assess[seq_path] = os.path.join(dir_path, file_name)
                         break
 
-
     def gap_check(self):
-        """
+        """Function to check for gaps in the dpx sequences
+
                     Iterate all folders containing dpx files
                     Check in each folder if DPX list is shorter than min() max() range list
                     If yes, report different to log and move folder to dpx_for_review
                     If identical, move folder to dpx_to_assess/ folder for folder type
                     old folder formatting or new folder formatting
         """
-        #TODO: Add logging
+        # TODO: Add logging
         for seq in self.dpx_to_assess.keys():
             dpath = Path(self.dpx_to_assess.get(seq)).parent
             has_gaps = gap_check_utils.find_missing(dpath)
@@ -272,8 +274,6 @@ class DpxAssessment:
         self.move_passed_sequences()
         self.log_success_failure()
         self.clean()
-
-
 
 
 if __name__ == '__main__':

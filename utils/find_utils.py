@@ -44,6 +44,11 @@ def find_in_logs(file_path, search_text):
 
 
 def find_dpx_folder_from_sequence(dpx_folder_path) -> dict:
+    """Function to find the nested folder containing only dpx_sequences
+
+    :param dpx_folder_path: folder to check for dpx
+    :return: dictionary with root folder and dpx folder path
+    """
     dpx_sequence = {}
     for seq in os.listdir(dpx_folder_path):
         seq_path = os.path.join(dpx_folder_path, seq)
