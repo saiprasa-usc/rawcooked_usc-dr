@@ -1,5 +1,6 @@
 import concurrent.futures
 import itertools
+import multiprocessing
 import os
 import shutil
 import subprocess
@@ -82,6 +83,7 @@ class DpxRawcook:
                 print(f"{mkv_file_name} : {line}")
 
         std_logs = ''.join(subprocess_logs)
+
         with open(output_txt_file, 'a+') as file:
             file.write(std_logs)
 
@@ -127,7 +129,7 @@ class DpxRawcook:
         """Executes Rawcooked over the sequences present in dpx_to_cook_v2
 
         These sequences have large reversibility file and thus needs to be cooked with --output-version 2 flag
-        Runs Rawcooked twice, once without the --framemd5 flag and then with --framemd5 flag
+        Runs Rawcooked with --framemd5 flag by default (might need to take user input later)
         The processed sequences are added to the temp_rawcooked_v2_list.txt file
         """
 
@@ -147,24 +149,23 @@ class DpxRawcook:
         # Store the paths in a temporary .txt file
         # If execution stops, we can see the sequences that were cooked
         with open(self.temp_rawcooked_v2_file, 'a+') as file:
-            for seq_path in dpx_to_cook.keys():
-                file.write(f"{seq_path}\n")
-                logging_utils.log(self.logfile, f"{seq_path} will be cooked using RAWCooked V2")
+            # TODO: Take max_workers input from GUI later
+            with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
+                for seq_path in dpx_to_cook.keys():
+                    file.write(f"{seq_path}\n")
+                    logging_utils.log(self.logfile, f"{seq_path} will be cooked using RAWCooked V2")
 
-                mkv_file_name = os.path.basename(seq_path)
+                    mkv_file_name = os.path.basename(seq_path)
 
-                with concurrent.futures.ProcessPoolExecutor() as executor:
-                    executor.submit(self.rawcooked_command_executor, seq_path, mkv_file_name, False, True)
-
-                # Cooking with --framemd5 flag
-                with concurrent.futures.ProcessPoolExecutor() as executor:
+                    # Cooking with --framemd5 flag by default
+                    # TODO: Take input from GUI later
                     executor.submit(self.rawcooked_command_executor, seq_path, mkv_file_name, True, True)
 
     def pass_two(self) -> None:
         """Executes Rawcooked over the sequences present in dpx_to_cook
 
         These sequences do NOT need to be cooked with --output-version 2 flag
-        Runs Rawcooked twice, once without the --framemd5 flag and then with --framemd5 flag
+        Runs Rawcooked with --framemd5 flag by default (might need to take user input later)
         The processed sequences are added to the temp_rawcooked_v1_list.txt file
         """
 
@@ -183,17 +184,16 @@ class DpxRawcook:
         # Store the paths in a temporary .txt file
         # If execution stops, we can see the sequences that were cooked
         with open(self.temp_rawcooked_v1_file, 'a+') as file:
-            for seq_path in dpx_to_cook.keys():
-                file.write(f"{seq_path}\n")
-                logging_utils.log(self.logfile, f"{seq_path} will be cooked using RAWCooked V2")
+            # TODO: Take max_workers input from GUI later
+            with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
+                for seq_path in dpx_to_cook.keys():
+                    file.write(f"{seq_path}\n")
+                    logging_utils.log(self.logfile, f"{seq_path} will be cooked using RAWCooked V2")
 
-                mkv_file_name = os.path.basename(seq_path)
+                    mkv_file_name = os.path.basename(seq_path)
 
-                with concurrent.futures.ProcessPoolExecutor() as executor:
-                    executor.submit(self.rawcooked_command_executor, seq_path, mkv_file_name, False, False)
-
-                # Cooking with --framemd5 flag
-                with concurrent.futures.ProcessPoolExecutor() as executor:
+                    # Cooking with --framemd5 flag by default
+                    # TODO: Take input from GUI later
                     executor.submit(self.rawcooked_command_executor, seq_path, mkv_file_name, True, False)
 
     def process_temporary_files(self) -> list:
