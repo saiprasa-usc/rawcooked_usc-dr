@@ -31,7 +31,7 @@ class DpxPostRawcook:
     def __init__(self):
         self.logfile = os.path.join(SCRIPT_LOG, "dpx_post_rawcook.log")
         self.date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.temp_medicaconch_policy_fails_file = os.path.join(MKV_DESTINATION, "temp_medicaconch_policy_fails.txt")
+        self.temp_mediaconch_policy_fails_file = os.path.join(MKV_DESTINATION, "temp_mediaconch_policy_fails.txt")
 
     def process(self):
         """Initiates the Post Rawcooked Workflow
@@ -51,7 +51,7 @@ class DpxPostRawcook:
             print("MKV folder empty, script exiting")
             sys.exit(1)
 
-        with open(self.temp_medicaconch_policy_fails_file, 'w+'):
+        with open(self.temp_mediaconch_policy_fails_file, 'w+'):
             pass
 
     def check_mediaconch_policies(self):
@@ -59,7 +59,7 @@ class DpxPostRawcook:
 
         Scans through the mkv_cooked folder for .mkv files and run mediaconch
         If a file fails the check, the path of that file and the respective .mkv.txt file gets appended into a
-        temporary .txt file named temp_medicaconch_policy_fails.txt
+        temporary .txt file named temp_mediaconch_policy_fails.txt
         """
         with os.scandir(MKV_COOKED_PATH) as entries:
             for entry in entries:
@@ -76,7 +76,7 @@ class DpxPostRawcook:
                         log(self.logfile, f"MEDIACONCH_FAILED_RESULT: {mediaconch_output}")
 
                         # Write both the failed mkv file along with the corresponding txt file
-                        with open(self.temp_medicaconch_policy_fails_file, "a+") as file:
+                        with open(self.temp_mediaconch_policy_fails_file, "a+") as file:
                             txt_file_name = f"{file_name}.txt"
                             txt_file_path = os.path.join(MKV_COOKED_PATH, txt_file_name)
                             file.write(f"{file_path}\n")
@@ -85,12 +85,12 @@ class DpxPostRawcook:
     def move_failed_files(self):
         """Moves the failed mkv file and its corresponding txt file into dpx_for_review/post_rawcook_fails/
 
-        Reads temp_medicaconch_policy_fails.txt
+        Reads temp_mediaconch_policy_fails.txt
         Moves the .mkv files into dpx_for_review/post_rawcook_fails/mkv_files/
         Moves the .mkv.txt files into  dpx_for_review/post_rawcook_fails/rawcook_output_logs/
         Remaining .mkv files inside the mkv_cooked have passed the mediaconch checks
         """
-        with open(self.temp_medicaconch_policy_fails_file, 'r') as file:
+        with open(self.temp_mediaconch_policy_fails_file, 'r') as file:
             for file_path in file:
                 file_path = file_path.strip()
                 if file_path.endswith(".mkv"):
@@ -103,7 +103,7 @@ class DpxPostRawcook:
         """Checks the mediaconch passed .mkv files for any other RAWCooked errors
 
         Reads each of the .mkv.txt files and checks for messages stored in error_messages
-        If error found, then the repective .mkv file are moved to dpx_for_review/post_rawcook_fails/mkv_files/
+        If error found, then the respective .mkv file are moved to dpx_for_review/post_rawcook_fails/mkv_files/
         And the .mkv.txt files are moved to dpx_for_review/post_rawcook_fails/rawcook_output_logs/
         """
         error_messages = [b"Reversibility was checked, issues detected, see below.", b"Error:", b"Conversion failed!",
@@ -138,7 +138,7 @@ class DpxPostRawcook:
         Deletes all the temporary .txt files created during the workflow
         """
         log(self.logfile, f"Concluding workflow by deleting temporary files")
-        os.remove(self.temp_medicaconch_policy_fails_file)
+        os.remove(self.temp_mediaconch_policy_fails_file)
         log(self.logfile, f"============= DPX Post-RAWcook workflow ENDED =============")
 
     def execute(self):
